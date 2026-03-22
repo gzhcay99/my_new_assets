@@ -7,7 +7,20 @@ let assets = JSON.parse(localStorage.getItem('assets')) || [],
     history = JSON.parse(localStorage.getItem('wealth_history')) || [],
     rates = {}, typeChart = null, historyChart = null, curView = 'type', editingId = null, pendingAction = null;
 
-window.onload = () => { populateDropdowns(); fetchRates(); };
+window.onload = () => { 
+    applyNightMode();
+    populateDropdowns(); 
+    fetchRates(); 
+};
+
+function applyNightMode() {
+    const hour = new Date().getHours();
+    const isNight = hour >= 21 || hour < 6; // 9 PM to 6 AM
+    if (isNight) {
+        document.body.classList.add('night-mode');
+        document.getElementById('themeLabel').innerText = "OBSIDIAN";
+    }
+}
 
 async function fetchRates() {
     try {
@@ -15,7 +28,7 @@ async function fetchRates() {
         rates = (await res.json()).rates;
         document.getElementById('rateDate').innerText = `SYNCED • ${new Date().toLocaleDateString()}`;
         updateUI();
-    } catch (e) { rates = { USD: 1, MYR: 4.7, SGD: 1.3 }; updateUI(); }
+    } catch (e) { rates = { USD: 1, MYR: 4.7, SGD: 1.3, CAD: 1.36, HKD: 7.8 }; updateUI(); }
 }
 
 function updateUI() {
@@ -26,53 +39,44 @@ function updateUI() {
     const filtered = assets.filter(a => {
         const matchesSearch = a.name.toLowerCase().includes(search);
         const matchesCcy = (cuF === 'All' || a.currency === cuF);
-        
         let matchesType = (tF === 'All' || a.type === tF);
         if (exT && tF !== 'All') matchesType = (a.type !== tF);
-        
         let matchesCountry = (coF === 'All' || a.country === coF);
         if (exC && coF !== 'All') matchesCountry = (a.country !== coF);
-
         return matchesSearch && matchesCcy && matchesType && matchesCountry;
     });
 
     let net = 0; const summ = {}, groups = {};
-
     filtered.forEach(a => {
         const val = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
         const factor = a.type === "Loan" ? -1 : 1;
         net += (val * factor);
-        
         const key = a[curView];
         summ[key] = (summ[key] || 0) + (val * factor);
         if (!groups[a.country]) groups[a.country] = []; groups[a.country].push(a);
     });
 
     document.getElementById('totalDisplay').innerText = new Intl.NumberFormat('en-CA', { style: 'currency', currency: ref }).format(net);
-    renderList(groups); renderSummary(summ, net, ref);
-    renderCharts(summ); lucide.createIcons();
+    renderList(groups); renderSummary(summ, net, ref); renderCharts(summ); lucide.createIcons();
 }
 
 function renderCharts(summ) {
+    const isNight = document.body.classList.contains('night-mode');
+    const goldTone = isNight ? '#b08d2b' : '#d4af37';
+
     if (typeChart) typeChart.destroy();
     const keys = Object.keys(summ), vals = Object.values(summ).map(Math.abs);
     typeChart = new Chart(document.getElementById('typeChart'), {
         type: 'pie',
-        data: {
-            labels: keys,
-            datasets: [{ data: vals, backgroundColor: ['#d4af37','#b8860b','#daa520','#ffd700','#f5deb3','#8b4513'], borderWidth: 0 }]
-        },
-        options: {
-            plugins: { legend: { display: true, position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, padding: 10 } } },
-            maintainAspectRatio: false
-        }
+        data: { labels: keys, datasets: [{ data: vals, backgroundColor: [goldTone,'#b8860b','#daa520','#ffd700','#f5deb3','#8b4513'], borderWidth: 0 }] },
+        options: { plugins: { legend: { display: true, position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } }, maintainAspectRatio: false }
     });
 
     if (historyChart) historyChart.destroy();
     if (history.length > 1) {
         historyChart = new Chart(document.getElementById('historyChart'), {
             type: 'line',
-            data: { labels: history.map(h=>h.date), datasets: [{ data: history.map(h=>h.value), borderColor: '#d4af37', fill: true, backgroundColor: 'rgba(212,175,55,0.05)', tension: 0.4, pointRadius: 0 }] },
+            data: { labels: history.map(h=>h.date), datasets: [{ data: history.map(h=>h.value), borderColor: goldTone, fill: true, backgroundColor: isNight ? 'rgba(176,141,43,0.02)' : 'rgba(212,175,55,0.05)', tension: 0.4, pointRadius: 0 }] },
             options: { scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false } }, maintainAspectRatio: false }
         });
     }
@@ -83,7 +87,7 @@ function renderSummary(summ, net, ref) {
     Object.entries(summ).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).forEach(([k,v]) => {
         const p = net ? (Math.abs(v)/Math.abs(net)*100).toFixed(0) : 0;
         list.innerHTML += `<div style="margin-bottom:12px"><div style="display:flex; justify-content:space-between; font-size:11px"><span style="color:#94a3b8">${k}</span><strong>${p}%</strong></div>
-            <div style="display:flex; justify-content:space-between; margin-top:2px"><strong>${v.toLocaleString(undefined,{maximumFractionDigits:0})}</strong><small style="color:#d4af37">${ref}</small></div></div>`;
+            <div style="display:flex; justify-content:space-between; margin-top:2px"><strong>${v.toLocaleString(undefined,{maximumFractionDigits:0})}</strong><small style="color:var(--prime)">${ref}</small></div></div>`;
     });
 }
 
@@ -135,9 +139,46 @@ function saveSnapshot() {
     let total = assets.reduce((sum, a) => sum + ((a.value / (rates[a.currency]||1)) * (rates[ref]||1) * (a.type==="Loan"?-1:1)), 0);
     const date = new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'short'});
     if (!history.length || history[history.length-1].value !== total) {
-        history.push({ date, value: total }); if (history.length > 15) history.shift();
+        history.push({ date, value: total }); if (history.length > 20) history.shift();
         localStorage.setItem('wealth_history', JSON.stringify(history));
     }
+}
+
+function importCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const lines = e.target.result.split('\n').filter(l => l.trim().length > 0);
+        lines.shift();
+        lines.forEach(line => {
+            const parts = line.split(',').map(p => p.replace(/"/g, '').trim());
+            if (parts.length >= 5) {
+                const [name, country, type, currency, value] = parts;
+                if (!assets.some(a => a.name === name && a.value == value)) {
+                    assets.push({ name, country, type, currency, value: parseFloat(value), id: Date.now() + Math.random() });
+                }
+            }
+        });
+        localStorage.setItem('assets', JSON.stringify(assets));
+        updateUI(); saveSnapshot();
+        alert("Portfolio Synced Successfully");
+    };
+    reader.readAsText(file);
+}
+
+function exportCSV() {
+    if (assets.length === 0) return;
+    const header = "Name,Entity,Type,Currency,Value\n";
+    const rows = assets.map(a => `"${a.name.replace(/"/g, '""')}","${a.country}","${a.type}","${a.currency}",${a.value}`).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `AssetHQ_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function populateDropdowns() {
@@ -157,5 +198,4 @@ document.getElementById('assetForm').onsubmit = (e) => {
     localStorage.setItem('assets', JSON.stringify(assets)); e.target.reset(); updateUI(); saveSnapshot();
 };
 
-function exportCSV() { let csv = "Name,Entity,Type,Currency,Value\n" + assets.map(a => `"${a.name}","${a.country}","${a.type}","${a.currency}",${a.value}`).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download="Assets.csv"; a.click(); }
 function setSummaryView(v, b) { curView = v; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); b.classList.add('active'); updateUI(); }

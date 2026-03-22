@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AssetHQ Pro | Midnight Gold</title>
-    
+    <title>AssetHQ Pro | Obsidian Gold</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#020617">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -34,9 +32,9 @@
             <div class="header-top">
                 <div class="brand">
                     <div class="logo-box"><i data-lucide="gem"></i></div>
-                    <h1>AssetHQ <span>GOLD</span></h1>
+                    <h1>AssetHQ <span id="themeLabel">GOLD</span></h1>
                 </div>
-                <div id="userBadge" class="user-badge shadow-sm">PWA ENABLED</div>
+                <div id="userBadge" class="user-badge shadow-sm">VAULT SECURE</div>
             </div>
             
             <div class="stats-hero">
@@ -76,8 +74,8 @@
                     <label class="input-tag">Tools</label>
                     <div class="action-bar gold-border">
                         <button class="action-btn delete" onclick="triggerAuth('wipe')" title="Wipe Data"><i data-lucide="trash-2"></i></button>
-                        <button class="action-btn" onclick="exportCSV()"><i data-lucide="download"></i></button>
-                        <button class="action-btn" onclick="document.getElementById('importFile').click()"><i data-lucide="upload"></i></button>
+                        <button class="action-btn" onclick="exportCSV()" title="Download CSV"><i data-lucide="download"></i></button>
+                        <button class="action-btn" onclick="document.getElementById('importFile').click()" title="Upload CSV"><i data-lucide="upload"></i></button>
                         <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
                     </div>
                 </div>
@@ -123,7 +121,6 @@
                     <div class="chart-wrapper"><canvas id="typeChart"></canvas></div>
                 </section>
             </aside>
-
             <div id="assetList" class="asset-grid"></div>
         </main>
 
@@ -135,13 +132,10 @@
             </div>
         </footer>
     </div>
-    
     <script src="script.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(() => console.log("PWA: Service Worker Active"))
-                .catch(err => console.log("PWA Error:", err));
+            navigator.serviceWorker.register('sw.js').catch(err => console.log("PWA Error:", err));
         }
     </script>
 </body>
