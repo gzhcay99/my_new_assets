@@ -7,16 +7,11 @@ let assets = JSON.parse(localStorage.getItem('assets')) || [],
     history = JSON.parse(localStorage.getItem('wealth_history')) || [],
     rates = {}, typeChart = null, historyChart = null, curView = 'type', editingId = null, pendingAction = null;
 
-window.onload = () => { 
-    applyNightMode();
-    populateDropdowns(); 
-    fetchRates(); 
-};
+window.onload = () => { applyNightMode(); populateDropdowns(); fetchRates(); };
 
 function applyNightMode() {
     const hour = new Date().getHours();
-    const isNight = hour >= 21 || hour < 6; 
-    if (isNight) {
+    if (hour >= 21 || hour < 6) {
         document.body.classList.add('night-mode');
         const lbl = document.getElementById('themeLabel');
         if(lbl) lbl.innerText = "OBSIDIAN";
@@ -66,8 +61,7 @@ function updateUI() {
 function renderCharts(summ) {
     const isNight = document.body.classList.contains('night-mode');
     const goldTone = isNight ? '#b08d2b' : '#d4af37';
-    const chartEl = document.getElementById('typeChart');
-    const histEl = document.getElementById('historyChart');
+    const chartEl = document.getElementById('typeChart'), histEl = document.getElementById('historyChart');
     if(!chartEl || !histEl) return;
 
     if (typeChart) typeChart.destroy();
@@ -155,52 +149,46 @@ function saveSnapshot() {
     }
 }
 
-// OPTIMIZED FOR ANDROID: Uses Blob.text() for better mobile handling
 async function importCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
     try {
         const content = await file.text();
         const lines = content.split(/\r?\n/).filter(l => l.trim().length > 0);
-        lines.shift(); // Skip Header
-        
+        lines.shift();
         lines.forEach(line => {
             const parts = line.split(',').map(p => p.replace(/"/g, '').trim());
             if (parts.length >= 5) {
                 const [name, country, type, currency, value] = parts;
                 if (!assets.some(a => a.name === name && a.value == value)) {
-                    assets.push({ 
-                        name, country, type, currency, 
-                        value: parseFloat(value), 
-                        id: Date.now() + Math.random() 
-                    });
+                    assets.push({ name, country, type, currency, value: parseFloat(value), id: Date.now() + Math.random() });
                 }
             }
         });
-        
         localStorage.setItem('assets', JSON.stringify(assets));
         updateUI(); saveSnapshot();
         alert("Portfolio Synced Successfully");
-        event.target.value = ''; // Reset input
-    } catch (err) {
-        console.error(err);
-        alert("Error reading file on mobile device.");
-    }
+        event.target.value = '';
+    } catch (err) { alert("Error reading file."); }
 }
 
+// NEW METHOD: DATA URI FOR ANDROID CHROME
 function exportCSV() {
-    if (assets.length === 0) return;
+    if (assets.length === 0) { alert("Nothing to export!"); return; }
     const header = "Name,Entity,Type,Currency,Value\n";
     const rows = assets.map(a => `"${a.name.replace(/"/g, '""')}","${a.country}","${a.type}","${a.currency}",${a.value}`).join('\n');
-    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = header + rows;
+    
+    // Encoded URI approach is more reliable on Android Chrome
+    const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
     const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `AssetHQ_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("href", encodedUri);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute("download", `AssetHQ_Pro_Export_${dateStr}.csv`);
+    
     document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    link.click(); // This triggers the Android Download Manager directly
+    setTimeout(() => document.body.removeChild(link), 100);
 }
 
 function populateDropdowns() {
@@ -221,22 +209,10 @@ const form = document.getElementById('assetForm');
 if(form) {
     form.onsubmit = (e) => {
         e.preventDefault();
-        assets.push({ 
-            name:document.getElementById('assetName').value, 
-            country:document.getElementById('assetCountry').value, 
-            type:document.getElementById('assetType').value, 
-            currency:document.getElementById('assetCurrency').value, 
-            value:parseFloat(document.getElementById('assetValue').value), 
-            id:Date.now() 
-        });
+        assets.push({ name:document.getElementById('assetName').value, country:document.getElementById('assetCountry').value, type:document.getElementById('assetType').value, currency:document.getElementById('assetCurrency').value, value:parseFloat(document.getElementById('assetValue').value), id:Date.now() });
         localStorage.setItem('assets', JSON.stringify(assets)); 
         e.target.reset(); updateUI(); saveSnapshot();
     };
 }
 
-function setSummaryView(v, b) { 
-    curView = v; 
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); 
-    b.classList.add('active'); 
-    updateUI(); 
-}
+function setSummaryView(v, b) { curView = v; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); b.classList.add('active'); updateUI(); }
