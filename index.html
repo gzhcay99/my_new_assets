@@ -76,7 +76,7 @@
                         <button class="action-btn delete" onclick="triggerAuth('wipe')" title="Wipe Data"><i data-lucide="trash-2"></i></button>
                         <button class="action-btn" onclick="exportCSV()" title="Download CSV"><i data-lucide="download"></i></button>
                         <button class="action-btn" onclick="document.getElementById('importFile').click()" title="Upload CSV"><i data-lucide="upload"></i></button>
-                        <input type="file" id="importFile" style="display:none" onchange="importCSV(event)">
+                        <input type="file" id="importFile" accept=".csv" style="display:none" onchange="importCSV(event)">
                     </div>
                 </div>
             </div>

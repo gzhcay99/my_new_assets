@@ -15,10 +15,11 @@ window.onload = () => {
 
 function applyNightMode() {
     const hour = new Date().getHours();
-    const isNight = hour >= 21 || hour < 6; // 9 PM to 6 AM
+    const isNight = hour >= 21 || hour < 6; 
     if (isNight) {
         document.body.classList.add('night-mode');
-        document.getElementById('themeLabel').innerText = "OBSIDIAN";
+        const lbl = document.getElementById('themeLabel');
+        if(lbl) lbl.innerText = "OBSIDIAN";
     }
 }
 
@@ -26,7 +27,8 @@ async function fetchRates() {
     try {
         const res = await fetch('https://open.er-api.com/v6/latest/USD');
         rates = (await res.json()).rates;
-        document.getElementById('rateDate').innerText = `SYNCED • ${new Date().toLocaleDateString()}`;
+        const rDate = document.getElementById('rateDate');
+        if(rDate) rDate.innerText = `SYNCED • ${new Date().toLocaleDateString()}`;
         updateUI();
     } catch (e) { rates = { USD: 1, MYR: 4.7, SGD: 1.3, CAD: 1.36, HKD: 7.8 }; updateUI(); }
 }
@@ -56,17 +58,21 @@ function updateUI() {
         if (!groups[a.country]) groups[a.country] = []; groups[a.country].push(a);
     });
 
-    document.getElementById('totalDisplay').innerText = new Intl.NumberFormat('en-CA', { style: 'currency', currency: ref }).format(net);
+    const td = document.getElementById('totalDisplay');
+    if(td) td.innerText = new Intl.NumberFormat('en-CA', { style: 'currency', currency: ref }).format(net);
     renderList(groups); renderSummary(summ, net, ref); renderCharts(summ); lucide.createIcons();
 }
 
 function renderCharts(summ) {
     const isNight = document.body.classList.contains('night-mode');
     const goldTone = isNight ? '#b08d2b' : '#d4af37';
+    const chartEl = document.getElementById('typeChart');
+    const histEl = document.getElementById('historyChart');
+    if(!chartEl || !histEl) return;
 
     if (typeChart) typeChart.destroy();
     const keys = Object.keys(summ), vals = Object.values(summ).map(Math.abs);
-    typeChart = new Chart(document.getElementById('typeChart'), {
+    typeChart = new Chart(chartEl, {
         type: 'pie',
         data: { labels: keys, datasets: [{ data: vals, backgroundColor: [goldTone,'#b8860b','#daa520','#ffd700','#f5deb3','#8b4513'], borderWidth: 0 }] },
         options: { plugins: { legend: { display: true, position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } }, maintainAspectRatio: false }
@@ -74,7 +80,7 @@ function renderCharts(summ) {
 
     if (historyChart) historyChart.destroy();
     if (history.length > 1) {
-        historyChart = new Chart(document.getElementById('historyChart'), {
+        historyChart = new Chart(histEl, {
             type: 'line',
             data: { labels: history.map(h=>h.date), datasets: [{ data: history.map(h=>h.value), borderColor: goldTone, fill: true, backgroundColor: isNight ? 'rgba(176,141,43,0.02)' : 'rgba(212,175,55,0.05)', tension: 0.4, pointRadius: 0 }] },
             options: { scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false } }, maintainAspectRatio: false }
@@ -83,7 +89,9 @@ function renderCharts(summ) {
 }
 
 function renderSummary(summ, net, ref) {
-    const list = document.getElementById('typeSummaryList'); list.innerHTML = "";
+    const list = document.getElementById('typeSummaryList'); 
+    if(!list) return;
+    list.innerHTML = "";
     Object.entries(summ).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).forEach(([k,v]) => {
         const p = net ? (Math.abs(v)/Math.abs(net)*100).toFixed(0) : 0;
         list.innerHTML += `<div style="margin-bottom:12px"><div style="display:flex; justify-content:space-between; font-size:11px"><span style="color:#94a3b8">${k}</span><strong>${p}%</strong></div>
@@ -92,7 +100,9 @@ function renderSummary(summ, net, ref) {
 }
 
 function renderList(groups) {
-    const feed = document.getElementById('assetList'); feed.innerHTML = "";
+    const feed = document.getElementById('assetList'); 
+    if(!feed) return;
+    feed.innerHTML = "";
     Object.keys(groups).sort().forEach(c => {
         let html = `<div class="asset-group"><div class="input-tag" style="margin: 20px 0 10px; border-bottom:1px solid var(--border); padding-bottom:5px">${c}</div>`;
         groups[c].forEach(a => {
@@ -130,6 +140,7 @@ function confirmAuth() {
 
 function saveEdit(id) {
     const a = assets.find(x => x.id === id);
+    if(!a) return;
     a.name = document.getElementById('en').value; a.type = document.getElementById('et').value; a.value = parseFloat(document.getElementById('ev').value);
     editingId = null; localStorage.setItem('assets', JSON.stringify(assets)); saveSnapshot(); updateUI();
 }
@@ -144,27 +155,38 @@ function saveSnapshot() {
     }
 }
 
-function importCSV(event) {
+// OPTIMIZED FOR ANDROID: Uses Blob.text() for better mobile handling
+async function importCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const lines = e.target.result.split('\n').filter(l => l.trim().length > 0);
-        lines.shift();
+    
+    try {
+        const content = await file.text();
+        const lines = content.split(/\r?\n/).filter(l => l.trim().length > 0);
+        lines.shift(); // Skip Header
+        
         lines.forEach(line => {
             const parts = line.split(',').map(p => p.replace(/"/g, '').trim());
             if (parts.length >= 5) {
                 const [name, country, type, currency, value] = parts;
                 if (!assets.some(a => a.name === name && a.value == value)) {
-                    assets.push({ name, country, type, currency, value: parseFloat(value), id: Date.now() + Math.random() });
+                    assets.push({ 
+                        name, country, type, currency, 
+                        value: parseFloat(value), 
+                        id: Date.now() + Math.random() 
+                    });
                 }
             }
         });
+        
         localStorage.setItem('assets', JSON.stringify(assets));
         updateUI(); saveSnapshot();
         alert("Portfolio Synced Successfully");
-    };
-    reader.readAsText(file);
+        event.target.value = ''; // Reset input
+    } catch (err) {
+        console.error(err);
+        alert("Error reading file on mobile device.");
+    }
 }
 
 function exportCSV() {
@@ -183,19 +205,38 @@ function exportCSV() {
 
 function populateDropdowns() {
     const fill = (id, l, filter=true) => {
-        const el = document.getElementById(id); el.innerHTML = filter ? '<option value="All">All</option>' : '';
+        const el = document.getElementById(id); 
+        if(!el) return;
+        el.innerHTML = filter ? '<option value="All">All</option>' : '';
         el.innerHTML += l.map(x => `<option value="${x}">${x}</option>`).join('');
     };
     fill('assetCountry', COUNTRIES, false); fill('countryFilter', COUNTRIES);
     fill('assetCurrency', CURRENCIES, false); fill('currencyFilter', CURRENCIES); fill('refCurrency', CURRENCIES, false);
     fill('assetType', TYPES, false); fill('typeFilter', TYPES);
-    document.getElementById('refCurrency').value = 'CAD';
+    const refCc = document.getElementById('refCurrency');
+    if(refCc) refCc.value = 'CAD';
 }
 
-document.getElementById('assetForm').onsubmit = (e) => {
-    e.preventDefault();
-    assets.push({ name:document.getElementById('assetName').value, country:document.getElementById('assetCountry').value, type:document.getElementById('assetType').value, currency:document.getElementById('assetCurrency').value, value:parseFloat(document.getElementById('assetValue').value), id:Date.now() });
-    localStorage.setItem('assets', JSON.stringify(assets)); e.target.reset(); updateUI(); saveSnapshot();
-};
+const form = document.getElementById('assetForm');
+if(form) {
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        assets.push({ 
+            name:document.getElementById('assetName').value, 
+            country:document.getElementById('assetCountry').value, 
+            type:document.getElementById('assetType').value, 
+            currency:document.getElementById('assetCurrency').value, 
+            value:parseFloat(document.getElementById('assetValue').value), 
+            id:Date.now() 
+        });
+        localStorage.setItem('assets', JSON.stringify(assets)); 
+        e.target.reset(); updateUI(); saveSnapshot();
+    };
+}
 
-function setSummaryView(v, b) { curView = v; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); b.classList.add('active'); updateUI(); }
+function setSummaryView(v, b) { 
+    curView = v; 
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); 
+    b.classList.add('active'); 
+    updateUI(); 
+}
