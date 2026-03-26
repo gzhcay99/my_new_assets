@@ -1,7 +1,7 @@
 // --- CONFIG (ENTER YOUR ID & KEY) ---
-const SHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; 
-const API_KEY = 'YOUR_GOOGLE_CLOUD_API_KEY_HERE'; 
-const RANGE = 'Sheet1!A2:E'; 
+const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
+const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
+const RANGE = 'webApp!A2:E';  
 
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
@@ -171,25 +171,49 @@ function renderDetails() {
 
 async function triggerFullSync() {
     if (!confirm("Sync from Google Sheets?")) return;
+    
     const btn = document.getElementById('syncTrigger');
     const icon = btn?.querySelector('.sync-icon');
     if(icon) icon.classList.add('spinning');
+    
     try {
+        // We add 'origin' context and ensure the API key is passed correctly
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-        const res = await fetch(url);
+        
+        const res = await fetch(url, {
+            method: 'GET',
+            mode: 'cors', // Explicitly request CORS
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error.message || "Failed to fetch");
+        }
+
         const data = await res.json();
         if (data.values) {
             assets = data.values.map((row, i) => ({
-                name: row[0], country: row[1], type: row[2], currency: row[3],
-                value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0, id: Date.now() + i
+                name: row[0], 
+                country: row[1], 
+                type: row[2], 
+                currency: row[3],
+                value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0, 
+                id: Date.now() + i
             }));
             localStorage.setItem('assets', JSON.stringify(assets));
             updateUI();
+            alert("Sync Successful!");
         }
-    } catch (e) { alert("Sync error."); } 
-    finally { if(icon) icon.classList.remove('spinning'); }
+    } catch (e) {
+        console.error("Sync Error Details:", e);
+        alert(`Sync error: ${e.message}\n\nCheck Console (F12) for details.`);
+    } finally {
+        if(icon) icon.classList.remove('spinning');
+    }
 }
-
 function renderChart(summ) {
     const canvas = document.getElementById('assetChart');
     if (!canvas) return;
