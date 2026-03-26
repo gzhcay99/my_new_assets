@@ -1,7 +1,7 @@
 // --- CONFIG (ENTER YOUR ID & KEY) ---
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
-const RANGE = 'webApp!A2:E'; 
+const RANGE = 'webApp!A2:E';  
 
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
@@ -11,12 +11,20 @@ let assets = JSON.parse(localStorage.getItem('assets')) || [];
 let rates = JSON.parse(localStorage.getItem('fx_rates')) || { USD: 1, CAD: 1.36 };
 let currentView = 'type', assetChart = null;
 
-window.onload = () => {
+// AUTO-RUN ON LOAD
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("AssetHQ Pro: Initializing...");
     populateDropdowns();
     loadFilters();
+    
+    // Attempt to update UI with cached data immediately
+    if (assets.length > 0) {
+        updateUI();
+    }
+
+    // Refresh FX rates and Sync event listeners
     fetchRates();
 
-    // Secure Event Binding for Mobile/Desktop
     const syncBtn = document.getElementById('syncTrigger');
     if (syncBtn) {
         syncBtn.addEventListener('click', (e) => {
@@ -24,24 +32,36 @@ window.onload = () => {
             triggerFullSync();
         });
     }
-};
+});
 
 function loadFilters() {
     const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
-    document.getElementById('exType').checked = s.exT;
-    document.getElementById('exCountry').checked = s.exC;
-    document.getElementById('typeFilter').value = s.tF;
-    document.getElementById('countryFilter').value = s.coF;
-    document.getElementById('refCurrency').value = s.ref;
+    const elExT = document.getElementById('exType');
+    const elExC = document.getElementById('exCountry');
+    const elTF = document.getElementById('typeFilter');
+    const elCF = document.getElementById('countryFilter');
+    const elRef = document.getElementById('refCurrency');
+
+    if(elExT) elExT.checked = s.exT;
+    if(elExC) elExC.checked = s.exC;
+    if(elTF) elTF.value = s.tF;
+    if(elCF) elCF.value = s.coF;
+    if(elRef) elRef.value = s.ref;
 }
 
 function saveFilters() {
+    const elExT = document.getElementById('exType');
+    const elExC = document.getElementById('exCountry');
+    const elTF = document.getElementById('typeFilter');
+    const elCF = document.getElementById('countryFilter');
+    const elRef = document.getElementById('refCurrency');
+
     const s = {
-        exT: document.getElementById('exType').checked,
-        exC: document.getElementById('exCountry').checked,
-        tF: document.getElementById('typeFilter').value,
-        coF: document.getElementById('countryFilter').value,
-        ref: document.getElementById('refCurrency').value
+        exT: elExT ? elExT.checked : false,
+        exC: elExC ? elExC.checked : false,
+        tF: elTF ? elTF.value : 'All',
+        coF: elCF ? elCF.value : 'All',
+        ref: elRef ? elRef.value : 'CAD'
     };
     localStorage.setItem('filters', JSON.stringify(s));
 }
@@ -55,7 +75,10 @@ async function fetchRates() {
             localStorage.setItem('fx_rates', JSON.stringify(rates));
             updateUI();
         }
-    } catch (e) { updateUI(); }
+    } catch (e) { 
+        console.warn("FX Fetch failed, using cache.");
+        updateUI(); 
+    }
 }
 
 function setView(v, btn) {
@@ -67,11 +90,19 @@ function setView(v, btn) {
 
 function updateUI() {
     saveFilters();
-    const ref = document.getElementById('refCurrency').value;
-    const tF = document.getElementById('typeFilter').value;
-    const coF = document.getElementById('countryFilter').value;
-    const exT = document.getElementById('exType').checked;
-    const exC = document.getElementById('exCountry').checked;
+    const elRef = document.getElementById('refCurrency');
+    const elTF = document.getElementById('typeFilter');
+    const elCF = document.getElementById('countryFilter');
+    const elExT = document.getElementById('exType');
+    const elExC = document.getElementById('exCountry');
+
+    if (!elRef || !elTF || !elCF) return;
+
+    const ref = elRef.value;
+    const tF = elTF.value;
+    const coF = elCF.value;
+    const exT = elExT.checked;
+    const exC = elExC.checked;
 
     const filtered = assets.filter(a => {
         let mT = (tF === 'All' || a.type === tF);
@@ -93,7 +124,9 @@ function updateUI() {
         summ[key] = (summ[key] || 0) + (val * factor);
     });
 
-    document.getElementById('totalDisplay').innerText = fmt.format(net);
+    const display = document.getElementById('totalDisplay');
+    if(display) display.innerText = fmt.format(net);
+    
     renderSummaryList(summ, ref);
     renderChart(summ);
 }
