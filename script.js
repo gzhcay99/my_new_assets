@@ -1,7 +1,6 @@
-// --- CONFIG (Enter your ID/Key) ---
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
-const RANGE = 'webApp!A2:E'; 
+const RANGE = 'webApp!A2:E';  
 
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
@@ -76,7 +75,7 @@ function updateUI() {
     const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: ref, maximumFractionDigits: 0 });
 
     filtered.forEach(a => {
-        const val = (a.value / rates[a.currency]) * rates[ref];
+        const val = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
         const factor = a.type === "Loan" ? -1 : 1;
         net += (val * factor);
         
@@ -124,7 +123,7 @@ function renderChart(summ) {
                 data: data,
                 backgroundColor: ['#fbbf24','#d97706','#b45309','#92400e','#78350f','#5c2b06','#334155'],
                 borderWidth: 2,
-                borderColor: '#0f172a' 
+                borderColor: '#0f172a'
             }]
         },
         options: { 
@@ -133,23 +132,18 @@ function renderChart(summ) {
                     display: true, 
                     position: 'bottom',
                     labels: { 
-                        // FORCE COLOR TO BE READABLE ON DARK BG
-                        color: '#f8fafc', 
-                        padding: 20,
+                        color: '#f8fafc',
+                        padding: 15,
                         usePointStyle: true,
                         pointStyle: 'circle',
-                        font: { 
-                            size: 12,
-                            family: "'Plus Jakarta Sans', sans-serif",
-                            weight: '600'
-                        },
+                        font: { size: 11, family: "'Plus Jakarta Sans', sans-serif", weight: '600' },
                         generateLabels: (chart) => {
                             const data = chart.data;
                             return data.labels.map((label, i) => ({
                                 text: `${label}: ${numFmt.format(data.datasets[0].data[i])}`,
                                 fillStyle: data.datasets[0].backgroundColor[i],
                                 strokeStyle: data.datasets[0].backgroundColor[i],
-                                fontColor: '#f8fafc', // Extra reinforcement for color
+                                fontColor: '#f8fafc',
                                 lineWidth: 0,
                                 index: i
                             }));
@@ -162,6 +156,7 @@ function renderChart(summ) {
         }
     });
 }
+
 function populateDropdowns() {
     const fill = (id, list, hasAll=true) => {
         const el = document.getElementById(id);
@@ -174,16 +169,26 @@ function populateDropdowns() {
 }
 
 async function triggerFullSync() {
-    if (!confirm("Sync from Sheets?")) return;
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.values) {
-        assets = data.values.map((row, i) => ({
-            name: row[0], country: row[1], type: row[2], currency: row[3],
-            value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0, id: Date.now() + i
-        }));
-        localStorage.setItem('assets', JSON.stringify(assets));
-        updateUI();
+    if (!confirm("Sync from Google Sheets?")) return;
+    
+    const icon = document.querySelector('.sync-icon');
+    if(icon) icon.classList.add('spinning');
+    
+    try {
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.values) {
+            assets = data.values.map((row, i) => ({
+                name: row[0], country: row[1], type: row[2], currency: row[3],
+                value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0, id: Date.now() + i
+            }));
+            localStorage.setItem('assets', JSON.stringify(assets));
+            updateUI();
+        }
+    } catch (e) {
+        console.error("Sync error", e);
+    } finally {
+        if(icon) icon.classList.remove('spinning');
     }
 }

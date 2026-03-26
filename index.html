@@ -14,10 +14,11 @@
         <header class="main-header glass-3d">
             <div class="stats-hero">
                 <div>
-                    <div class="stats-label">TOTAL WEALTH VAULT</div>
-                    <div class="wealth-row" style="display:flex; align-items:center; gap:15px;">
+                    <div id="syncTrigger" class="stats-label clickable-sync" onclick="triggerFullSync()">
+                        TOTAL WEALTH VAULT <i data-lucide="refresh-cw" class="sync-icon"></i>
+                    </div>
+                    <div class="wealth-row">
                         <div id="totalDisplay" class="total-wealth">$0</div>
-                        <button class="sync-btn" onclick="triggerFullSync()"><i data-lucide="refresh-cw"></i></button>
                     </div>
                 </div>
                 <div class="currency-selector">
@@ -41,7 +42,7 @@
         </header>
 
         <main class="dashboard-summary">
-            <section class="card glass-3d" style="height:400px; display:flex; flex-direction:column;">
+            <section class="card glass-3d" style="height:480px; display:flex; flex-direction:column;">
                 <h3 class="card-title">ALLOCATION</h3>
                 <div style="flex-grow:1; position:relative;"><canvas id="assetChart"></canvas></div>
             </section>
