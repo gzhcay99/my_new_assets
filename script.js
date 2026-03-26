@@ -1,7 +1,6 @@
-// --- CONFIG (ENTER YOUR ID & KEY) ---
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
-const RANGE = 'webApp!A2:E'; 
+const RANGE = 'webApp!A2:E';  
 
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
@@ -9,17 +8,13 @@ const TYPES = ["Cash", "Fixed Term Deposit", "Bonds", "Stocks and Funds", "Real 
 
 let assets = JSON.parse(localStorage.getItem('assets')) || [];
 let rates = JSON.parse(localStorage.getItem('fx_rates')) || { USD: 1, CAD: 1.36 };
-let currentView = 'type', assetChart = null;
+let currentView = 'type'; 
+let assetChart = null;
 
-// Initialize when DOM is ready (Better for Android browsers)
 document.addEventListener('DOMContentLoaded', () => {
     populateDropdowns();
     loadFilters();
-    
-    // Initial UI Render from Cache
     if (assets.length > 0) updateUI();
-
-    // Fetch live data
     fetchRates();
 
     const syncBtn = document.getElementById('syncTrigger');
@@ -31,49 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function loadFilters() {
-    const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
-    const els = {
-        exT: document.getElementById('exType'),
-        exC: document.getElementById('exCountry'),
-        tF: document.getElementById('typeFilter'),
-        coF: document.getElementById('countryFilter'),
-        ref: document.getElementById('refCurrency')
-    };
-    if (els.exT) els.exT.checked = s.exT;
-    if (els.exC) els.exC.checked = s.exC;
-    if (els.tF) els.tF.value = s.tF;
-    if (els.coF) els.coF.value = s.coF;
-    if (els.ref) els.ref.value = s.ref;
-}
-
-function saveFilters() {
-    const s = {
-        exT: document.getElementById('exType')?.checked || false,
-        exC: document.getElementById('exCountry')?.checked || false,
-        tF: document.getElementById('typeFilter')?.value || 'All',
-        coF: document.getElementById('countryFilter')?.value || 'All',
-        ref: document.getElementById('refCurrency')?.value || 'CAD'
-    };
-    localStorage.setItem('filters', JSON.stringify(s));
-}
-
-async function fetchRates() {
-    try {
-        const res = await fetch('https://open.er-api.com/v6/latest/USD');
-        const data = await res.json();
-        if (data.rates) {
-            rates = data.rates;
-            localStorage.setItem('fx_rates', JSON.stringify(rates));
-            updateUI();
-        }
-    } catch (e) { updateUI(); }
-}
-
 function setView(v, btn) {
-    currentView = v;
+    currentView = v; // This must be 'currency' for the sub-totals to show
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
+    if(btn) btn.classList.add('active');
     updateUI();
 }
 
@@ -95,7 +51,7 @@ function updateUI() {
 
     let net = 0; 
     const summ = {}; 
-    const localSumm = {}; // Specifically for the requested local total display
+    const localSumm = {}; 
 
     filtered.forEach(a => {
         const val = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
@@ -126,8 +82,9 @@ function renderSummaryList(summ, ref, localSumm) {
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
 
     container.innerHTML = Object.entries(summ).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([k, v]) => {
-        const showLocal = currentView === 'currency' && k !== ref;
-        const localValue = showLocal ? `<div style="color:var(--text-muted); font-size: 0.75rem; margin-top: 2px;">${numFmt.format(localSumm[k])} ${k}</div>` : '';
+        // MATCH CHECK: currentView must be exactly 'currency'
+        const showLocal = (currentView === 'currency' && k !== ref);
+        const localLine = showLocal ? `<div style="color:var(--text-muted); font-size: 0.75rem; font-weight: 500;">${numFmt.format(localSumm[k])} ${k}</div>` : '';
 
         return `
             <div class="clickable-row" onclick="window.location.href='detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'">
@@ -137,7 +94,7 @@ function renderSummaryList(summ, ref, localSumm) {
                         ${numFmt.format(v)} <small style="color:var(--text-muted); font-weight:400;">${ref}</small>
                         <i data-lucide="chevron-right" style="width:12px; vertical-align:middle; margin-left:5px;"></i>
                     </div>
-                    ${localValue}
+                    ${localLine}
                 </div>
             </div>
         `;
@@ -162,37 +119,29 @@ function renderChart(summ) {
             datasets: [{
                 data: data,
                 backgroundColor: ['#fbbf24','#d97706','#b45309','#92400e','#78350f','#5c2b06','#334155'],
-                borderWidth: 2,
-                borderColor: '#0f172a'
+                borderWidth: 2, borderColor: '#0f172a'
             }]
         },
         options: { 
             plugins: { 
                 legend: { 
-                    display: true, 
-                    position: 'bottom',
+                    display: true, position: 'bottom',
                     labels: { 
-                        color: '#f8fafc', // Readable on Android/Desktop dark background
-                        padding: 15,
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        font: { size: 11, family: "'Plus Jakarta Sans', sans-serif", weight: '600' },
+                        color: '#f8fafc', padding: 15, usePointStyle: true,
+                        font: { size: 11, weight: '600' },
                         generateLabels: (chart) => {
                             const d = chart.data;
                             return d.labels.map((label, i) => ({
                                 text: `${label}: ${numFmt.format(d.datasets[0].data[i])}`,
                                 fillStyle: d.datasets[0].backgroundColor[i],
                                 strokeStyle: d.datasets[0].backgroundColor[i],
-                                fontColor: '#f8fafc',
-                                lineWidth: 0,
-                                index: i
+                                fontColor: '#f8fafc', index: i
                             }));
                         }
                     } 
                 }
             },
-            maintainAspectRatio: false,
-            cutout: '65%'
+            maintainAspectRatio: false, cutout: '65%'
         }
     });
 }
@@ -210,11 +159,9 @@ function populateDropdowns() {
 
 async function triggerFullSync() {
     if (!confirm("Sync from Google Sheets?")) return;
-    
     const btn = document.getElementById('syncTrigger');
-    const icon = btn ? btn.querySelector('.sync-icon') : null;
+    const icon = btn?.querySelector('.sync-icon');
     if(icon) icon.classList.add('spinning');
-    
     try {
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
         const res = await fetch(url);
@@ -227,9 +174,15 @@ async function triggerFullSync() {
             localStorage.setItem('assets', JSON.stringify(assets));
             updateUI();
         }
-    } catch (e) {
-        alert("Sync error. Check if API Key and Sheet ID are correct.");
-    } finally {
-        if(icon) icon.classList.remove('spinning');
-    }
+    } catch (e) { alert("Sync error."); } 
+    finally { if(icon) icon.classList.remove('spinning'); }
+}
+
+function loadFilters() {
+    const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
+    const els = ['exType', 'exCountry', 'typeFilter', 'countryFilter', 'refCurrency'];
+    els.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el[el.type === 'checkbox' ? 'checked' : 'value'] = s[id === 'exType' ? 'exT' : id === 'exCountry' ? 'exC' : id === 'typeFilter' ? 'tF' : id === 'countryFilter' ? 'coF' : 'ref'];
+    });
 }
