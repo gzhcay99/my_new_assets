@@ -2,141 +2,63 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AssetHQ Pro | Obsidian Gold</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#020617">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AssetHQ Pro | Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id="authOverlay" class="overlay" style="display:none">
-        <div class="modal glass-3d">
-            <div class="icon-circle"><i data-lucide="shield-check"></i></div>
-            <h3>Authorize Action</h3>
-            <p>Enter PIN to modify the Vault</p>
-            <input type="password" id="loginPin" maxlength="6" placeholder="••••••">
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="prime-btn btn-del" onclick="closeAuth()">Cancel</button>
-                <button class="prime-btn gold-glow" onclick="confirmAuth()">Verify</button>
-            </div>
-        </div>
-    </div>
-
     <div class="container">
         <header class="main-header glass-3d">
-            <div class="header-top">
-                <div class="brand">
-                    <div class="logo-box"><i data-lucide="gem"></i></div>
-                    <h1>AssetHQ <span id="themeLabel">GOLD</span></h1>
-                </div>
-                <div id="userBadge" class="user-badge shadow-sm">VAULT SECURE</div>
-            </div>
-            
             <div class="stats-hero">
                 <div>
-                    <div class="stats-label">ESTIMATED NET WORTH</div>
-                    <div id="totalDisplay" class="total-wealth">$0.00</div>
+                    <div class="stats-label">TOTAL WEALTH VAULT</div>
+                    <div class="wealth-row" style="display:flex; align-items:center; gap:15px;">
+                        <div id="totalDisplay" class="total-wealth">$0</div>
+                        <button class="sync-btn" onclick="triggerFullSync()"><i data-lucide="refresh-cw"></i></button>
+                    </div>
                 </div>
                 <div class="currency-selector">
                     <label class="input-tag">Reporting Ccy</label>
-                    <select id="refCurrency" onchange="updateUI()" class="neo-select gold-border"></select>
+                    <select id="refCurrency" onchange="updateUI()"></select>
                 </div>
             </div>
 
             <div class="controls-grid">
-                <div class="search-box">
-                    <label class="input-tag">Search Portfolio</label>
-                    <div class="input-wrapper">
-                        <i data-lucide="search"></i>
-                        <input type="text" id="assetSearch" placeholder="Filter..." oninput="updateUI()">
-                    </div>
-                </div>
-                <div class="filter-pill">
-                    <label class="input-tag">Type</label>
+                <div class="filter-pill glass-3d">
+                    <label class="input-tag">Asset Type</label>
                     <select id="typeFilter" onchange="updateUI()"></select>
-                    <label class="check-box"><input type="checkbox" id="exType" onchange="updateUI()"> Excl.</label>
+                    <label class="check-box"><input type="checkbox" id="exType" onchange="updateUI()"> Exclude</label>
                 </div>
-                <div class="filter-pill">
+                <div class="filter-pill glass-3d">
                     <label class="input-tag">Entity</label>
                     <select id="countryFilter" onchange="updateUI()"></select>
-                    <label class="check-box"><input type="checkbox" id="exCountry" onchange="updateUI()"> Excl.</label>
-                </div>
-                <div class="filter-pill">
-                    <label class="input-tag">Currency</label>
-                    <select id="currencyFilter" onchange="updateUI()"></select>
-                </div>
-                <div class="action-bar-wrapper">
-                    <label class="input-tag">Tools</label>
-                    <div class="action-bar gold-border">
-                        <button class="action-btn delete" onclick="triggerAuth('wipe')" title="Wipe Data"><i data-lucide="trash-2"></i></button>
-                        <button class="action-btn" onclick="exportCSV()" title="Download CSV"><i data-lucide="download"></i></button>
-                        <button class="action-btn" onclick="document.getElementById('importFile').click()" title="Upload CSV"><i data-lucide="upload"></i></button>
-                        <input type="file" id="importFile" accept=".csv" style="display:none" onchange="importCSV(event)">
-                    </div>
+                    <label class="check-box"><input type="checkbox" id="exCountry" onchange="updateUI()"> Exclude</label>
                 </div>
             </div>
         </header>
 
-        <main class="dashboard-layout">
-            <aside class="side-panel">
-                <section class="card glass-3d">
-                    <h3 class="card-title"><i data-lucide="plus-square"></i> New Asset</h3>
-                    <form id="assetForm" class="neo-form">
-                        <input type="text" id="assetName" placeholder="Asset Name" required>
-                        <div class="form-row">
-                            <select id="assetCountry" required></select>
-                            <select id="assetType" required></select>
-                        </div>
-                        <div class="form-row">
-                            <select id="assetCurrency" required></select>
-                            <input type="number" id="assetValue" placeholder="Amount" step="any" required>
-                        </div>
-                        <button type="submit" class="prime-btn gold-glow">Add to Portfolio</button>
-                    </form>
-                </section>
+        <main class="dashboard-summary">
+            <section class="card glass-3d" style="height:400px; display:flex; flex-direction:column;">
+                <h3 class="card-title">ALLOCATION</h3>
+                <div style="flex-grow:1; position:relative;"><canvas id="assetChart"></canvas></div>
+            </section>
 
-                <section class="card glass-3d">
-                    <h3 class="card-title"><i data-lucide="trending-up"></i> Wealth Trend</h3>
-                    <div class="chart-wrapper line-chart"><canvas id="historyChart"></canvas></div>
-                </section>
-
-                <section class="card glass-3d">
-                    <div class="card-header">
-                        <div class="tab-switcher gold-border">
-                            <button class="tab active" onclick="setSummaryView('type', this)">Type</button>
-                            <button class="tab" onclick="setSummaryView('country', this)">Entity</button>
-                            <button class="tab" onclick="setSummaryView('currency', this)">Ccy</button>
-                        </div>
+            <section class="card glass-3d">
+                <div class="summary-header">
+                    <h3 class="card-title">BREAKDOWN</h3>
+                    <div class="tab-group">
+                        <button class="tab active" onclick="setView('type', this)">TYPE</button>
+                        <button class="tab" onclick="setView('country', this)">ENTITY</button>
+                        <button class="tab" onclick="setView('currency', this)">CCY</button>
                     </div>
-                    <div id="typeSummaryList" class="summary-list"></div>
-                </section>
-
-                <section class="card glass-3d chart-card">
-                    <h3 class="card-title">Asset Mix</h3>
-                    <div class="chart-wrapper"><canvas id="typeChart"></canvas></div>
-                </section>
-            </aside>
-            <div id="assetList" class="asset-grid"></div>
+                </div>
+                <div id="summaryDisplay"></div>
+            </section>
         </main>
-
-        <footer class="live-footer glass-3d">
-            <div class="rate-info"><div class="pulse-indicator"></div><span id="rateDate">Connecting...</span></div>
-            <div class="rate-tickers">
-                <div class="ticker-item gold-border"><span class="label">MYR</span> <span id="myrRate" class="val">--</span></div>
-                <div class="ticker-item gold-border"><span class="label">SGD</span> <span id="sgdRate" class="val">--</span></div>
-            </div>
-        </footer>
     </div>
     <script src="script.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log("PWA Error:", err));
-        }
-    </script>
 </body>
 </html>
