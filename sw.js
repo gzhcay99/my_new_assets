@@ -1,22 +1,10 @@
-const CACHE_NAME = 'assethq-v1';
-const ASSETS = [
-  'index.html',
-  'style.css',
-  'script.js',
-  'https://unpkg.com/lucide@latest',
-  'https://cdn.jsdelivr.net/npm/chart.js'
-];
+const CACHE_NAME = 'asset-hq-v1';
+const assetsToCache = ['./index.html', './detail.html', './style.css', './script.js', './manifest.json'];
 
-// Install Service Worker
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(assetsToCache)));
 });
 
-// Fetch Assets from Cache
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request))
-  );
+self.addEventListener('fetch', (event) => {
+  event.respondWith(caches.match(event.request).then((response) => response || fetch(event.request)));
 });
