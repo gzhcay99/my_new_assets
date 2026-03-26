@@ -1,35 +1,45 @@
 // --- CONFIG (ENTER YOUR ID & KEY) ---
-const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
-const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
-const RANGE = 'webApp!A2:E'; 
+const SHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; 
+const API_KEY = 'YOUR_GOOGLE_CLOUD_API_KEY_HERE'; 
+const RANGE = 'Sheet1!A2:E'; 
 
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
 const TYPES = ["Cash", "Fixed Term Deposit", "Bonds", "Stocks and Funds", "Real Estate", "Crypto", "Other", "Loan"];
 
+// Persistent State
 let assets = JSON.parse(localStorage.getItem('assets')) || [];
 let rates = JSON.parse(localStorage.getItem('fx_rates')) || { USD: 1, CAD: 1.36 };
 let currentView = 'type'; 
 let assetChart = null;
 
+// --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    populateDropdowns();
-    loadFilters();
-    if (assets.length > 0) updateUI();
-    fetchRates();
+    // Determine which page we are on
+    const isDetailPage = window.location.pathname.includes('detail.html');
 
-    const syncBtn = document.getElementById('syncTrigger');
-    if (syncBtn) {
-        syncBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            triggerFullSync();
-        });
+    if (isDetailPage) {
+        renderDetails();
+    } else {
+        populateDropdowns();
+        loadFilters();
+        if (assets.length > 0) updateUI();
+        fetchRates();
+
+        const syncBtn = document.getElementById('syncTrigger');
+        if (syncBtn) {
+            syncBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                triggerFullSync();
+            });
+        }
     }
 });
 
+// --- HOME PAGE LOGIC ---
+
 function setView(v, btn) {
-    currentView = v.toLowerCase(); // Force lowercase for consistency
-    console.log("View changed to:", currentView);
+    currentView = v.toLowerCase();
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     if(btn) btn.classList.add('active');
     updateUI();
@@ -55,7 +65,6 @@ function updateUI() {
     const summ = {}; 
     const localSumm = {}; 
 
-    // Normalize check for Currency/CCY tab
     const isCurrencyView = (currentView === 'currency' || currentView === 'ccy');
 
     filtered.forEach(a => {
@@ -87,7 +96,6 @@ function renderSummaryList(summ, ref, localSumm, isCurrencyView) {
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
 
     container.innerHTML = Object.entries(summ).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([k, v]) => {
-        // Show local total if in currency view AND the currency is different from reporting currency
         const showLocal = (isCurrencyView && k !== ref);
         const localLine = showLocal ? `<div style="color:var(--text-muted); font-size: 0.75rem; font-weight: 500; margin-top: 2px;">${numFmt.format(localSumm[k])} ${k}</div>` : '';
 
@@ -105,6 +113,81 @@ function renderSummaryList(summ, ref, localSumm, isCurrencyView) {
         `;
     }).join('');
     if(window.lucide) lucide.createIcons();
+}
+
+// --- DETAIL PAGE LOGIC ---
+
+function renderDetails() {
+    const params = new URLSearchParams(window.location.search);
+    const view = (params.get('view') || 'type').toLowerCase();
+    const filterValue = params.get('value');
+    const ref = params.get('ref') || 'CAD';
+
+    const container = document.getElementById('detailsList');
+    const titleEl = document.getElementById('detailTitle');
+    if (!container || !titleEl) return;
+
+    titleEl.innerText = filterValue;
+
+    const matches = assets.filter(a => {
+        if (view === 'currency' || view === 'ccy') return a.currency === filterValue;
+        if (view === 'country') return a.country === filterValue;
+        return a.type === filterValue;
+    });
+
+    const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
+
+    container.innerHTML = matches.map(a => {
+        const convertedVal = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
+        const isDifferentCcy = a.currency !== ref;
+        
+        // Show original local amount on the detail page
+        const localLine = isDifferentCcy 
+            ? `<div style="color:var(--text-muted); font-size: 0.8rem; font-weight: 500; margin-top: 4px;">
+                ${numFmt.format(a.value)} ${a.currency} <span style="font-size: 0.7rem;">(Original)</span>
+               </div>` 
+            : '';
+
+        return `
+            <div class="asset-item">
+                <div>
+                    <div class="asset-name">${a.name}</div>
+                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-top: 4px;">
+                        ${a.type} • ${a.country}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="asset-value">
+                        ${numFmt.format(convertedVal)} <small style="font-weight: 400; font-size: 0.7rem; color: var(--text-muted)">${ref}</small>
+                    </div>
+                    ${localLine}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// --- SHARED UTILITIES ---
+
+async function triggerFullSync() {
+    if (!confirm("Sync from Google Sheets?")) return;
+    const btn = document.getElementById('syncTrigger');
+    const icon = btn?.querySelector('.sync-icon');
+    if(icon) icon.classList.add('spinning');
+    try {
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.values) {
+            assets = data.values.map((row, i) => ({
+                name: row[0], country: row[1], type: row[2], currency: row[3],
+                value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0, id: Date.now() + i
+            }));
+            localStorage.setItem('assets', JSON.stringify(assets));
+            updateUI();
+        }
+    } catch (e) { alert("Sync error."); } 
+    finally { if(icon) icon.classList.remove('spinning'); }
 }
 
 function renderChart(summ) {
@@ -151,6 +234,18 @@ function renderChart(summ) {
     });
 }
 
+function fetchRates() {
+    fetch('https://open.er-api.com/v6/latest/USD')
+        .then(res => res.json())
+        .then(data => {
+            if (data.rates) {
+                rates = data.rates;
+                localStorage.setItem('fx_rates', JSON.stringify(rates));
+                if (assets.length > 0) updateUI();
+            }
+        }).catch(e => console.warn("Rate fetch failed. Using cache."));
+}
+
 function populateDropdowns() {
     const fill = (id, list, hasAll=true) => {
         const el = document.getElementById(id);
@@ -162,27 +257,6 @@ function populateDropdowns() {
     fill('countryFilter', COUNTRIES);
 }
 
-async function triggerFullSync() {
-    if (!confirm("Sync from Google Sheets?")) return;
-    const btn = document.getElementById('syncTrigger');
-    const icon = btn?.querySelector('.sync-icon');
-    if(icon) icon.classList.add('spinning');
-    try {
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.values) {
-            assets = data.values.map((row, i) => ({
-                name: row[0], country: row[1], type: row[2], currency: row[3],
-                value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0, id: Date.now() + i
-            }));
-            localStorage.setItem('assets', JSON.stringify(assets));
-            updateUI();
-        }
-    } catch (e) { alert("Sync error."); } 
-    finally { if(icon) icon.classList.remove('spinning'); }
-}
-
 function loadFilters() {
     const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
     const elMap = { exType: 'exT', exCountry: 'exC', typeFilter: 'tF', countryFilter: 'coF', refCurrency: 'ref' };
@@ -190,4 +264,15 @@ function loadFilters() {
         const el = document.getElementById(id);
         if(el) el[el.type === 'checkbox' ? 'checked' : 'value'] = s[elMap[id]];
     });
+}
+
+function saveFilters() {
+    const s = {
+        exT: document.getElementById('exType')?.checked || false,
+        exC: document.getElementById('exCountry')?.checked || false,
+        tF: document.getElementById('typeFilter')?.value || 'All',
+        coF: document.getElementById('countryFilter')?.value || 'All',
+        ref: document.getElementById('refCurrency')?.value || 'CAD'
+    };
+    localStorage.setItem('filters', JSON.stringify(s));
 }
