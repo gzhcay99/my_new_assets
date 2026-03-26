@@ -14,8 +14,16 @@ window.onload = () => {
     populateDropdowns();
     loadFilters();
     fetchRates();
-};
 
+    // MOBILE ROBUSTNESS: Bind the click event via addEventListener
+    const syncTrigger = document.getElementById('syncTrigger');
+    if (syncTrigger) {
+        syncTrigger.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevents any weird mobile scrolling behavior
+            triggerFullSync();
+        });
+    }
+};
 function loadFilters() {
     const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
     document.getElementById('exType').checked = s.exT;
