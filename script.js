@@ -1,7 +1,6 @@
-// --- CONFIG (ENTER YOUR ID & KEY) ---
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
-const RANGE = 'webApp!A2:E';  
+const RANGE = 'webApp!A2:E'; 
 
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
@@ -12,7 +11,6 @@ let rates = JSON.parse(localStorage.getItem('fx_rates')) || { USD: 1, CAD: 1.36 
 let currentView = 'type';
 let assetChart = null;
 
-// Initialization logic
 document.addEventListener('DOMContentLoaded', () => {
     const isDetail = window.location.pathname.includes('detail.html');
 
@@ -24,12 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (assets.length > 0) updateUI();
         fetchRates();
 
+        // Sync logic for Desktop & Mobile
         const syncBtn = document.getElementById('syncTrigger');
         if (syncBtn) {
-            syncBtn.onclick = (e) => {
+            syncBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 triggerFullSync();
-            };
+            });
         }
     }
     if (window.lucide) lucide.createIcons();
@@ -43,19 +42,10 @@ async function triggerFullSync() {
     if (icon) icon.classList.add('spinning');
 
     try {
-        // Desktop Fix: use a clean URL without complex headers to avoid CORS pre-flight
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-        
-        const res = await fetch(url, { 
-            method: 'GET',
-            cache: 'no-store' // Ensures you get fresh data on desktop
-        });
+        const res = await fetch(url); // Standard GET to prevent CORS pre-flight block
 
-        if (!res.ok) {
-            const errorText = await res.text();
-            console.error("API Error:", errorText);
-            throw new Error("API Key or Sheet ID is incorrect.");
-        }
+        if (!res.ok) throw new Error("Sync Failed. Ensure Sheet is Public.");
 
         const data = await res.json();
         if (data.values) {
@@ -65,11 +55,10 @@ async function triggerFullSync() {
             }));
             localStorage.setItem('assets', JSON.stringify(assets));
             updateUI();
-            alert("Sync Success!");
+            alert("Sync Complete!");
         }
     } catch (e) {
-        console.error(e);
-        alert(`Sync failed. Error: ${e.message}\n\n1. Ensure Sheet is 'Anyone with link can view'\n2. Ensure API Key is unrestricted.`);
+        alert("Desktop Sync Error: Ensure your API Key is unrestricted or includes your domain in the Google Cloud Console.");
     } finally {
         if (icon) icon.classList.remove('spinning');
     }
@@ -132,6 +121,43 @@ function renderSummaryList(summ, ref, localSumm, isCurrencyView) {
     }).join('');
 }
 
+function renderChart(summ) {
+    const canvas = document.getElementById('assetChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (assetChart) assetChart.destroy();
+
+    const dataArr = Object.values(summ).map(v => Math.max(0, v));
+    const labelArr = Object.keys(summ);
+
+    assetChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labelArr,
+            datasets: [{
+                data: dataArr,
+                backgroundColor: ['#fbbf24','#d97706','#b45309','#92400e','#78350f','#5c2b06','#334155'],
+                borderWidth: 2, borderColor: '#0f172a'
+            }]
+        },
+        options: { 
+            plugins: { 
+                legend: { 
+                    display: true, 
+                    position: 'bottom',
+                    labels: {
+                        color: '#f8fafc', // Invisible Legend Fix
+                        font: { size: 11, weight: '600' },
+                        padding: 20
+                    }
+                } 
+            }, 
+            maintainAspectRatio: false, 
+            cutout: '70%' 
+        }
+    });
+}
+
 function setView(v, btn) {
     currentView = v.toLowerCase();
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -180,23 +206,4 @@ function fetchRates() {
                 updateUI();
             }
         }).catch(() => updateUI());
-}
-
-function renderChart(summ) {
-    const canvas = document.getElementById('assetChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (assetChart) assetChart.destroy();
-    assetChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(summ),
-            datasets: [{
-                data: Object.values(summ).map(v => Math.max(0, v)),
-                backgroundColor: ['#fbbf24','#d97706','#b45309','#92400e','#78350f','#5c2b06','#334155'],
-                borderWidth: 2, borderColor: '#0f172a'
-            }]
-        },
-        options: { plugins: { legend: { display: false } }, maintainAspectRatio: false, cutout: '70%' }
-    });
 }
