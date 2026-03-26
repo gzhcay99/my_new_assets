@@ -25,7 +25,6 @@ body {
     padding: 20px; 
 }
 
-/* Bulletproof Button for Android/XPS 13 */
 .clickable-sync-btn {
     background: none; border: none;
     padding: 12px 20px 12px 0; margin: 0;
@@ -60,6 +59,8 @@ body {
     padding: 16px; border-bottom: 1px solid var(--border); 
     cursor: pointer; transition: 0.2s; touch-action: manipulation;
 }
+
+.clickable-row:hover { background: rgba(251, 191, 36, 0.05); }
 
 @media (max-width: 850px) { 
     .dashboard-summary { grid-template-columns: 1fr; }

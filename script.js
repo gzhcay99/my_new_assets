@@ -1,6 +1,7 @@
+// --- CONFIG (ENTER YOUR ID & KEY) ---
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
-const RANGE = 'webApp!A2:E';  
+const RANGE = 'webApp!A2:E'; 
 
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
@@ -27,7 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setView(v, btn) {
-    currentView = v; // This must be 'currency' for the sub-totals to show
+    currentView = v.toLowerCase(); // Force lowercase for consistency
+    console.log("View changed to:", currentView);
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     if(btn) btn.classList.add('active');
     updateUI();
@@ -53,15 +55,18 @@ function updateUI() {
     const summ = {}; 
     const localSumm = {}; 
 
+    // Normalize check for Currency/CCY tab
+    const isCurrencyView = (currentView === 'currency' || currentView === 'ccy');
+
     filtered.forEach(a => {
         const val = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
         const factor = a.type === "Loan" ? -1 : 1;
         net += (val * factor);
         
-        const key = currentView === 'currency' ? a.currency : (currentView === 'country' ? a.country : a.type);
+        const key = isCurrencyView ? a.currency : (currentView === 'country' ? a.country : a.type);
         summ[key] = (summ[key] || 0) + (val * factor);
         
-        if (currentView === 'currency') {
+        if (isCurrencyView) {
             localSumm[key] = (localSumm[key] || 0) + (a.value * factor);
         }
     });
@@ -72,27 +77,27 @@ function updateUI() {
         display.innerText = fmt.format(net);
     }
     
-    renderSummaryList(summ, ref, localSumm);
+    renderSummaryList(summ, ref, localSumm, isCurrencyView);
     renderChart(summ);
 }
 
-function renderSummaryList(summ, ref, localSumm) {
+function renderSummaryList(summ, ref, localSumm, isCurrencyView) {
     const container = document.getElementById('summaryDisplay');
     if(!container) return;
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
 
     container.innerHTML = Object.entries(summ).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([k, v]) => {
-        // MATCH CHECK: currentView must be exactly 'currency'
-        const showLocal = (currentView === 'currency' && k !== ref);
-        const localLine = showLocal ? `<div style="color:var(--text-muted); font-size: 0.75rem; font-weight: 500;">${numFmt.format(localSumm[k])} ${k}</div>` : '';
+        // Show local total if in currency view AND the currency is different from reporting currency
+        const showLocal = (isCurrencyView && k !== ref);
+        const localLine = showLocal ? `<div style="color:var(--text-muted); font-size: 0.75rem; font-weight: 500; margin-top: 2px;">${numFmt.format(localSumm[k])} ${k}</div>` : '';
 
         return `
             <div class="clickable-row" onclick="window.location.href='detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'">
                 <div style="color:var(--prime); font-weight:700">${k}</div>
                 <div style="text-align:right;">
-                    <div style="color:#fff; font-weight:800;">
-                        ${numFmt.format(v)} <small style="color:var(--text-muted); font-weight:400;">${ref}</small>
-                        <i data-lucide="chevron-right" style="width:12px; vertical-align:middle; margin-left:5px;"></i>
+                    <div style="color:#fff; font-weight:800; display:flex; align-items:center; justify-content:flex-end;">
+                        ${numFmt.format(v)} <span style="color:var(--text-muted); font-size: 0.7rem; font-weight:400; margin-left:4px;">${ref}</span>
+                        <i data-lucide="chevron-right" style="width:12px; height:12px; margin-left:8px;"></i>
                     </div>
                     ${localLine}
                 </div>
@@ -180,9 +185,9 @@ async function triggerFullSync() {
 
 function loadFilters() {
     const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
-    const els = ['exType', 'exCountry', 'typeFilter', 'countryFilter', 'refCurrency'];
-    els.forEach(id => {
+    const elMap = { exType: 'exT', exCountry: 'exC', typeFilter: 'tF', countryFilter: 'coF', refCurrency: 'ref' };
+    Object.keys(elMap).forEach(id => {
         const el = document.getElementById(id);
-        if(el) el[el.type === 'checkbox' ? 'checked' : 'value'] = s[id === 'exType' ? 'exT' : id === 'exCountry' ? 'exC' : id === 'typeFilter' ? 'tF' : id === 'countryFilter' ? 'coF' : 'ref'];
+        if(el) el[el.type === 'checkbox' ? 'checked' : 'value'] = s[elMap[id]];
     });
 }
