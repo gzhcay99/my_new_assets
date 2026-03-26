@@ -1,6 +1,7 @@
+// --- CONFIG (ENTER YOUR ID & KEY) ---
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
-const RANGE = 'webApp!A2:E';  
+const RANGE = 'webApp!A2:E'; 
 
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
@@ -15,15 +16,16 @@ window.onload = () => {
     loadFilters();
     fetchRates();
 
-    // MOBILE ROBUSTNESS: Bind the click event via addEventListener
-    const syncTrigger = document.getElementById('syncTrigger');
-    if (syncTrigger) {
-        syncTrigger.addEventListener('click', function(e) {
-            e.preventDefault(); // Prevents any weird mobile scrolling behavior
+    // Secure Event Binding for Mobile/Desktop
+    const syncBtn = document.getElementById('syncTrigger');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             triggerFullSync();
         });
     }
 };
+
 function loadFilters() {
     const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
     document.getElementById('exType').checked = s.exT;
@@ -110,7 +112,7 @@ function renderSummaryList(summ, ref) {
             </div>
         </div>
     `).join('');
-    lucide.createIcons();
+    if(window.lucide) lucide.createIcons();
 }
 
 function renderChart(summ) {
@@ -140,7 +142,7 @@ function renderChart(summ) {
                     display: true, 
                     position: 'bottom',
                     labels: { 
-                        color: '#f8fafc',
+                        color: '#f8fafc', 
                         padding: 15,
                         usePointStyle: true,
                         pointStyle: 'circle',
@@ -179,7 +181,8 @@ function populateDropdowns() {
 async function triggerFullSync() {
     if (!confirm("Sync from Google Sheets?")) return;
     
-    const icon = document.querySelector('.sync-icon');
+    const btn = document.getElementById('syncTrigger');
+    const icon = btn ? btn.querySelector('.sync-icon') : null;
     if(icon) icon.classList.add('spinning');
     
     try {
@@ -195,7 +198,7 @@ async function triggerFullSync() {
             updateUI();
         }
     } catch (e) {
-        console.error("Sync error", e);
+        alert("Sync error. Check console for details.");
     } finally {
         if(icon) icon.classList.remove('spinning');
     }
