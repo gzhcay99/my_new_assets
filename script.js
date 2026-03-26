@@ -1,3 +1,4 @@
+// --- CONFIG (ENTER YOUR ID & KEY) ---
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
 const RANGE = 'webApp!A2:E';  
@@ -11,8 +12,8 @@ let rates = JSON.parse(localStorage.getItem('fx_rates')) || { USD: 1, CAD: 1.36 
 let currentView = 'type';
 let assetChart = null;
 
+// Initialization logic
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if we are on detail or index
     const isDetail = window.location.pathname.includes('detail.html');
 
     if (isDetail) {
@@ -23,13 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (assets.length > 0) updateUI();
         fetchRates();
 
-        // Robust listener for Sync Button
         const syncBtn = document.getElementById('syncTrigger');
         if (syncBtn) {
-            syncBtn.addEventListener('click', (e) => {
+            syncBtn.onclick = (e) => {
                 e.preventDefault();
                 triggerFullSync();
-            });
+            };
         }
     }
     if (window.lucide) lucide.createIcons();
@@ -43,10 +43,19 @@ async function triggerFullSync() {
     if (icon) icon.classList.add('spinning');
 
     try {
+        // Desktop Fix: use a clean URL without complex headers to avoid CORS pre-flight
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-        const res = await fetch(url, { method: 'GET', mode: 'cors' });
+        
+        const res = await fetch(url, { 
+            method: 'GET',
+            cache: 'no-store' // Ensures you get fresh data on desktop
+        });
 
-        if (!res.ok) throw new Error("API Connection Failed");
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error("API Error:", errorText);
+            throw new Error("API Key or Sheet ID is incorrect.");
+        }
 
         const data = await res.json();
         if (data.values) {
@@ -56,10 +65,11 @@ async function triggerFullSync() {
             }));
             localStorage.setItem('assets', JSON.stringify(assets));
             updateUI();
-            alert("Sync Complete!");
+            alert("Sync Success!");
         }
     } catch (e) {
-        alert("Sync error. Ensure Sheet is Public and API Key is valid.");
+        console.error(e);
+        alert(`Sync failed. Error: ${e.message}\n\n1. Ensure Sheet is 'Anyone with link can view'\n2. Ensure API Key is unrestricted.`);
     } finally {
         if (icon) icon.classList.remove('spinning');
     }
