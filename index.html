@@ -2,68 +2,62 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AssetHQ Pro | Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AssetHQ Pro</title>
+    <link rel="stylesheet" href="./style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="container">
-        <header class="main-header glass-3d">
-            <div class="stats-hero">
+        <div class="glass-3d">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                    <button id="syncTrigger" class="stats-label clickable-sync-btn">
-    TOTAL WEALTH VAULT <i data-lucide="refresh-cw" class="sync-icon"></i>
-</button>
-                    <div class="wealth-row">
-                        <div id="totalDisplay" class="total-wealth">$0</div>
-                    </div>
+                    <span class="input-tag">Total Wealth</span>
+                    <h1 class="total-wealth" id="totalDisplay">$0</h1>
                 </div>
-                <div class="currency-selector">
-                    <label class="input-tag">Reporting Ccy</label>
-                    <select id="refCurrency" onchange="updateUI()"></select>
-                </div>
+                <button id="syncTrigger" class="clickable-sync-btn">
+                    <i data-lucide="refresh-cw" class="sync-icon"></i>
+                    <span>Sync Data</span>
+                </button>
             </div>
 
             <div class="controls-grid">
-                <div class="filter-pill glass-3d">
-                    <label class="input-tag">Asset Type</label>
-                    <select id="typeFilter" onchange="updateUI()"></select>
-                    <label class="check-box"><input type="checkbox" id="exType" onchange="updateUI()"> Exclude</label>
+                <div>
+                    <span class="input-tag">Reporting Currency</span>
+                    <select id="refCurrency" onchange="updateUI()"></select>
                 </div>
-                <div class="filter-pill glass-3d">
-                    <label class="input-tag">Entity</label>
+                <div>
+                    <span class="input-tag">Asset Type Filter</span>
+                    <select id="typeFilter" onchange="updateUI()"></select>
+                    <label class="check-box"><input type="checkbox" id="exType" onchange="updateUI()"> Exclude this type</label>
+                </div>
+                <div>
+                    <span class="input-tag">Entity Filter</span>
                     <select id="countryFilter" onchange="updateUI()"></select>
-                    <label class="check-box"><input type="checkbox" id="exCountry" onchange="updateUI()"> Exclude</label>
+                    <label class="check-box"><input type="checkbox" id="exCountry" onchange="updateUI()"> Exclude this entity</label>
                 </div>
             </div>
-        </header>
 
-        <main class="dashboard-summary">
-            <section class="card glass-3d" style="height:480px; display:flex; flex-direction:column;">
-                <h3 class="card-title">ALLOCATION</h3>
-                <div style="flex-grow:1; position:relative;"><canvas id="assetChart"></canvas></div>
-            </section>
-
-            <section class="card glass-3d">
-                <div class="summary-header">
-                    <h3 class="card-title">BREAKDOWN</h3>
-                    <div class="tab-group">
-                        <button class="tab active" onclick="setView('type', this)">TYPE</button>
-                        <button class="tab" onclick="setView('country', this)">ENTITY</button>
-                        <button class="tab" onclick="setView('currency', this)">CCY</button>
-                    </div>
+            <div class="dashboard-summary">
+                <div class="chart-container">
+                    <canvas id="assetChart"></canvas>
                 </div>
-                <div id="summaryDisplay"></div>
-            </section>
-        </main>
+                <div>
+                    <div class="summary-header">
+                        <span class="input-tag">Breakdown</span>
+                        <div class="tab-group">
+                            <button class="tab active" onclick="setView('type', this)">Type</button>
+                            <button class="tab" onclick="setView('country', this)">Entity</button>
+                            <button class="tab" onclick="setView('currency', this)">CCY</button>
+                        </div>
+                    </div>
+                    <div id="summaryDisplay"></div>
+                </div>
+            </div>
+        </div>
     </div>
-    <script src="/script.js"></script>
-
-<script src="./script.js"></script>
-<link rel="stylesheet" href="./style.css">
-
+    <script src="./script.js"></script>
 </body>
 </html>
