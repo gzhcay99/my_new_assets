@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Asset Detail - AssetHQ Pro</title>
+    <link rel="stylesheet" href="./style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="detail-page">
+    <div class="container">
+        <div class="glass-3d">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                <button onclick="window.location.href='index.html'" class="back-btn">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <h1 id="detailTitle" style="font-size: 2.2rem; margin: 0; color: var(--prime); letter-spacing: -1px;">Detail</h1>
+            </div>
+            
+            <div id="detailsList" class="details-stack"></div>
+        </div>
+    </div>
+    <script src="./script.js"></script>
+</body>
+</html>

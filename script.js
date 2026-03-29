@@ -11,18 +11,22 @@ let rates = JSON.parse(localStorage.getItem('fx_rates')) || { USD: 1, CAD: 1.36 
 let currentView = 'type';
 let assetChart = null;
 
+// --- CRITICAL INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    const isDetail = window.location.pathname.includes('detail.html');
+    // Determine if we are on the detail page by looking for the container ID
+    const detailContainer = document.getElementById('detailsList');
 
-    if (isDetail) {
+    if (detailContainer) {
         renderDetails();
     } else {
+        // Only run dashboard logic if we are on the index page
         populateDropdowns();
         loadFilters();
         updateUI();
         fetchRates();
         document.getElementById('syncTrigger')?.addEventListener('click', triggerFullSync);
     }
+    
     if (window.lucide) lucide.createIcons();
 });
 
@@ -35,9 +39,10 @@ function renderDetails() {
 
     const container = document.getElementById('detailsList');
     const titleEl = document.getElementById('detailTitle');
-    if (!container || !titleEl) return;
+    
+    if (!container || !filterValue) return;
 
-    titleEl.innerText = filterValue;
+    if (titleEl) titleEl.innerText = filterValue;
 
     const matches = assets.filter(a => {
         if (view === 'currency' || view === 'ccy') return a.currency === filterValue;
@@ -46,6 +51,11 @@ function renderDetails() {
     });
 
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
+
+    if (matches.length === 0) {
+        container.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-muted);">No assets found for this category.</div>`;
+        return;
+    }
 
     container.innerHTML = matches.map(a => {
         const convertedVal = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
@@ -82,7 +92,8 @@ async function triggerFullSync() {
         const data = await res.json();
 
         if (data.values) {
-            const currentNet = parseFloat(document.getElementById('totalDisplay').innerText.replace(/[^0-9.-]+/g, "")) || 0;
+            const currentDisplay = document.getElementById('totalDisplay');
+            const currentNet = currentDisplay ? parseFloat(currentDisplay.innerText.replace(/[^0-9.-]+/g, "")) : 0;
             localStorage.setItem('lastWealth', currentNet);
 
             assets = data.values.map((row, i) => ({
@@ -94,7 +105,7 @@ async function triggerFullSync() {
             localStorage.setItem('lastSyncTime', new Date().toLocaleString());
             updateUI();
         }
-    } catch (e) { alert("Sync failed."); }
+    } catch (e) { console.error(e); }
     finally { icon?.classList.remove('spinning'); }
 }
 
