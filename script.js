@@ -151,12 +151,17 @@ function renderSummaryList(summ, ref) {
     if (!container) return;
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
     
-    container.innerHTML = Object.entries(summ).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `
-        <div class="clickable-row" onclick="window.location.href='./detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'">
-            <div style="font-weight:700; font-size: 1.1rem; color:var(--prime)">${k}</div>
-            <div style="font-weight:800; font-size: 1.1rem;">${numFmt.format(v)} <small>${ref}</small></div>
-        </div>
-    `).join('');
+    container.innerHTML = Object.entries(summ).sort((a,b)=>b[1]-a[1]).map(([k, v]) => {
+        // We use a strictly relative path './detail.html'
+        const detailUrl = `./detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}`;
+        
+        return `
+            <div class="clickable-row" onclick="window.location.href='${detailUrl}'">
+                <div style="font-weight:700; font-size: 1.1rem; color:var(--prime)">${k}</div>
+                <div style="font-weight:800; font-size: 1.1rem;">${numFmt.format(v)} <small>${ref}</small></div>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderChart(summ) {
