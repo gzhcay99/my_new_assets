@@ -13,87 +13,55 @@ let assetChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const detailContainer = document.getElementById('detailsList');
-
     if (detailContainer) {
-        // We are on the detail page
         renderDetails();
     } else {
-        // We are on the main dashboard
         populateDropdowns();
         loadFilters();
         updateUI();
         fetchRates();
-        document.getElementById('syncTrigger')?.addEventListener('click', triggerFullSync);
+        const syncBtn = document.getElementById('syncTrigger');
+        if (syncBtn) syncBtn.onclick = triggerFullSync;
     }
     if (window.lucide) lucide.createIcons();
 });
 
-// --- CORE DETAIL RENDERING ---
-function renderDetails() {
-    const container = document.getElementById('detailsList');
-    if (!container) return;
-
-    // Re-verify assets from storage in case the variable cleared
-    if (!assets || assets.length === 0) {
-        assets = JSON.parse(localStorage.getItem('assets')) || [];
-    }
-
-    const params = new URLSearchParams(window.location.search);
-    const view = params.get('view');
-    const val = decodeURIComponent(params.get('value') || '');
-    const ref = params.get('ref') || 'CAD';
-
-    const titleEl = document.getElementById('detailTitle');
-    if (titleEl) titleEl.innerText = val || "Details";
-
-    if (assets.length === 0) {
-        container.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-muted);">No data found. Please go back and Sync.</div>`;
-        return;
-    }
-
-    const matches = assets.filter(a => {
-        if (view === 'country') return a.country === val;
-        if (view === 'currency' || view === 'ccy') return a.currency === val;
-        return a.type === val;
-    });
-
-    const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
-
-    container.innerHTML = matches.map(a => {
-        const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
-        return `
-            <div style="padding:24px; border:1px solid var(--border); border-radius:16px; margin-bottom:12px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.03); align-items:center;">
-                <div>
-                    <div style="font-size:1.3rem; font-weight:700; color:#fff">${a.name}</div>
-                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">${a.type} | ${a.country}</div>
-                </div>
-                <div style="text-align:right">
-                    <div style="font-size:1.5rem; font-weight:800; color:var(--prime)">${numFmt.format(conv)} <small style="font-size:0.8rem; opacity:0.7">${ref}</small></div>
-                    <div style="font-size:1rem; color:var(--text-muted); font-weight:500;">${numFmt.format(a.value)} ${a.currency}</div>
-                </div>
-            </div>`;
-    }).join('');
-}
-
-// --- DASHBOARD LOGIC ---
 async function triggerFullSync() {
     const icon = document.querySelector('.sync-icon');
-    icon?.classList.add('spinning');
+    if (icon) icon.classList.add('spinning');
+    
+    // Constructing URL without extra headers to avoid CORS Preflight blocks
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+    
     try {
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error.message);
+        }
+
         if (data.values) {
             const currentDisplay = document.getElementById('totalDisplay');
             const currentNet = currentDisplay ? parseFloat(currentDisplay.innerText.replace(/[^0-9.-]+/g, "")) : 0;
             localStorage.setItem('lastWealth', currentNet);
-            assets = data.values.map(row => ({ name: row[0], country: row[1], type: row[2], currency: row[3], value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0 }));
+            
+            assets = data.values.map(row => ({ 
+                name: row[0], country: row[1], type: row[2], currency: row[3], 
+                value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0 
+            }));
+            
             localStorage.setItem('assets', JSON.stringify(assets));
             localStorage.setItem('lastSyncTime', new Date().toLocaleString());
             updateUI();
+            alert("Sync Successful!");
         }
-    } catch (e) { alert("Sync Error. Check API Restrictions."); }
-    finally { icon?.classList.remove('spinning'); }
+    } catch (e) { 
+        console.error("Sync Error:", e);
+        alert("Sync Failed: " + e.message + "\n\nTip: Ensure your Google Cloud Console allows requests from this URL."); 
+    } finally { 
+        if (icon) icon.classList.remove('spinning'); 
+    }
 }
 
 function updateUI() {
@@ -185,4 +153,34 @@ function loadFilters() {
     if(document.getElementById('refCurrency')) document.getElementById('refCurrency').value = s.ref;
 }
 
-function fetchRates() { fetch('https://open.er-api.com/v6/latest/USD').then(res => res.json()).then(data => { if(data.rates) { rates = data.rates; localStorage.setItem('fx_rates', JSON.stringify(rates)); updateUI(); } }); }
+function fetchRates() { 
+    fetch('https://open.er-api.com/v6/latest/USD')
+    .then(res => res.json())
+    .then(data => { if(data.rates) { rates = data.rates; localStorage.setItem('fx_rates', JSON.stringify(rates)); updateUI(); } })
+    .catch(err => console.error("FX Rate Fetch Failed:", err));
+}
+
+function renderDetails() {
+    const container = document.getElementById('detailsList');
+    if (!container) return;
+    if (!assets || assets.length === 0) assets = JSON.parse(localStorage.getItem('assets')) || [];
+    
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    const val = decodeURIComponent(params.get('value') || '');
+    const ref = params.get('ref') || 'CAD';
+
+    const titleEl = document.getElementById('detailTitle');
+    if (titleEl) titleEl.innerText = val;
+
+    const matches = assets.filter(a => (view === 'country' ? a.country === val : (view === 'currency' ? a.currency === val : a.type === val)));
+    const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
+
+    container.innerHTML = matches.map(a => {
+        const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
+        return `<div style="padding:24px; border:1px solid var(--border); border-radius:16px; margin-bottom:12px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.03); align-items:center;">
+            <div><div style="font-size:1.3rem; font-weight:700">${a.name}</div><div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${a.type} | ${a.country}</div></div>
+            <div style="text-align:right"><div style="font-size:1.5rem; font-weight:800; color:var(--prime)">${numFmt.format(conv)} ${ref}</div><div style="font-size:1rem; color:var(--text-muted)">${numFmt.format(a.value)} ${a.currency}</div></div>
+        </div>`;
+    }).join('');
+}
