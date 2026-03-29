@@ -27,24 +27,20 @@
                     <span>Sync Data</span>
                 </button>
             </div>
-
             <div class="controls-grid">
                 <div>
-                    <span class="input-tag">Reporting Currency</span>
+                    <span class="input-tag">Reporting CCY</span>
                     <select id="refCurrency" onchange="updateUI()"></select>
                 </div>
                 <div>
-                    <span class="input-tag">Asset Type Filter</span>
+                    <span class="input-tag">Type Filter</span>
                     <select id="typeFilter" onchange="updateUI()"></select>
-                    <label class="check-box"><input type="checkbox" id="exType" onchange="updateUI()"> Exclude this type</label>
                 </div>
                 <div>
                     <span class="input-tag">Entity Filter</span>
                     <select id="countryFilter" onchange="updateUI()"></select>
-                    <label class="check-box"><input type="checkbox" id="exCountry" onchange="updateUI()"> Exclude this entity</label>
                 </div>
             </div>
-
             <div class="dashboard-summary">
                 <div class="chart-container"><canvas id="assetChart"></canvas></div>
                 <div>
@@ -62,10 +58,6 @@
         </div>
     </div>
     <script src="./script.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
-        }
-    </script>
+    <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }</script>
 </body>
 </html>
