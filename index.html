@@ -45,14 +45,14 @@
                     <label>Asset Type</label>
                     <div style="display:flex; gap:5px;">
                         <select id="typeFilter" onchange="updateUI()"></select>
-                        <input type="checkbox" id="exType" onchange="updateUI()" class="ex-check">
+                        <input type="checkbox" id="exType" onchange="updateUI()" class="ex-check" title="Exclude selected type">
                     </div>
                 </div>
                 <div class="filter-group">
                     <label>Country</label>
                     <div style="display:flex; gap:5px;">
                         <select id="countryFilter" onchange="updateUI()"></select>
-                        <input type="checkbox" id="exCountry" onchange="updateUI()" class="ex-check">
+                        <input type="checkbox" id="exCountry" onchange="updateUI()" class="ex-check" title="Exclude selected country">
                     </div>
                 </div>
             </div>
@@ -63,13 +63,21 @@
                 <button class="tab" onclick="setView('currency', this)">Currency</button>
             </div>
 
-            <div id="summaryDisplay" class="summary-list"></div>
+            <div id="summaryDisplay" class="summary-list">
+                </div>
             
             <div style="margin-top: 20px; text-align: center; font-size: 0.65rem; color: var(--text-muted); opacity: 0.5;">
-                AssetHQ Pro v2.4 (Dashboard Native Totals)
+                AssetHQ Pro v2.4.1 (Cache-Bust Update)
             </div>
         </div>
     </div>
-    <script src="./script.js"></script>
+
+    <script src="./script.js?v=2.4.1"></script>
+    <script>
+        // Re-initialize icons after script load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) lucide.createIcons();
+        });
+    </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-console.log("AssetHQ Pro V2.4 - Dashboard Native Totals Active");
+console.log("AssetHQ Pro V2.4 [DEPLOYED] - Native Totals Dashboard + Details");
 
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearBtn.onclick = () => {
                 if (confirm("Clear all local data and reset filters?")) {
                     localStorage.clear();
-                    window.location.reload();
+                    window.location.reload(true); // Forced reload
                 }
             };
         }
@@ -52,11 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function updateUI() {
     const totalDisplay = document.getElementById('totalDisplay');
-    const typeFilter = document.getElementById('typeFilter');
-    if (!totalDisplay || !typeFilter) return;
+    if (!totalDisplay) return;
 
     const ref = document.getElementById('refCurrency')?.value || 'CAD';
-    const tF = typeFilter.value || 'All';
+    const tF = document.getElementById('typeFilter')?.value || 'All';
     const coF = document.getElementById('countryFilter')?.value || 'All';
     const exT = document.getElementById('exType')?.checked || false;
     const exC = document.getElementById('exCountry')?.checked || false;
@@ -72,19 +71,17 @@ function updateUI() {
     });
 
     let net = 0; 
-    const summ = {}; // Stores converted values for sorting/charting
-    const nativeSumm = {}; // Specifically for the Currency Tab native totals
+    const summ = {}; 
+    const nativeSumm = {}; 
 
     filtered.forEach(a => {
         const factor = a.type === "Loan" ? -1 : 1;
         const valConverted = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
-        
         net += (valConverted * factor);
         
         const key = currentView === 'country' ? a.country : (currentView === 'currency' ? a.currency : a.type);
         summ[key] = (summ[key] || 0) + (valConverted * factor);
         
-        // Track native totals separately if we are in currency view
         if (currentView === 'currency') {
             nativeSumm[key] = (nativeSumm[key] || 0) + (a.value * factor);
         }
@@ -103,19 +100,18 @@ function renderSummaryList(summ, ref, nativeSumm) {
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
     
     container.innerHTML = Object.entries(summ).sort((a,b)=>b[1]-a[1]).map(([k, v]) => {
-        // If in currency view, show "Native Amount" + "Converted Amount"
         const subLabel = (currentView === 'currency' && nativeSumm[k] !== undefined) 
-            ? `<div style="font-size: 0.8rem; color: var(--prime); font-weight: 600;">${numFmt.format(nativeSumm[k])} ${k}</div>`
-            : `<div style="font-size: 0.8rem; color: var(--text-muted);">${numFmt.format(v)} ${ref}</div>`;
+            ? `<div style="font-size: 0.85rem; color: var(--prime); font-weight: 700;">${numFmt.format(nativeSumm[k])} ${k}</div>`
+            : `<div style="font-size: 0.8rem; color: var(--text-muted); opacity: 0.7;">${numFmt.format(v)} ${ref}</div>`;
 
         return `
-        <div class="clickable-row" onclick="window.location.href='./detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border);">
+        <div class="clickable-row" onclick="window.location.href='./detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'" style="display: flex; justify-content: space-between; align-items: center; padding: 18px 15px; border-bottom: 1px solid var(--border);">
             <div>
-                <div style="font-weight:700; color:#fff; font-size: 1.1rem;">${k}</div>
+                <div style="font-weight:700; color:#fff; font-size: 1.15rem; margin-bottom: 2px;">${k}</div>
                 ${subLabel}
             </div>
             <div style="text-align: right;">
-                <div style="font-weight:800; font-size: 1.1rem;">${numFmt.format(v)} <small>${ref}</small></div>
+                <div style="font-weight:800; font-size: 1.15rem; color: #fff;">${numFmt.format(v)} <small style="font-size: 0.7rem; opacity:0.6;">${ref}</small></div>
             </div>
         </div>
     `}).join('');
@@ -164,15 +160,15 @@ function renderDetails() {
     });
 
     let html = `
-        <div style="background: var(--prime); color: #000; padding: 20px; border-radius: 16px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.2);">
+        <div style="background: var(--prime); color: #000; padding: 22px; border-radius: 18px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 12px 24px rgba(0,0,0,0.3);">
             <div>
-                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; opacity: 0.7;">Total in ${ref}</div>
-                <div style="font-size: 1.6rem; font-weight: 900;">${numFmt.format(totalRef)} <span style="font-size: 0.9rem;">${ref}</span></div>
+                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; opacity: 0.7; margin-bottom: 4px;">Total (${ref})</div>
+                <div style="font-size: 1.7rem; font-weight: 900; letter-spacing: -0.5px;">${numFmt.format(totalRef)}</div>
             </div>
             ${view === 'currency' ? `
             <div style="text-align: right; border-left: 1px solid rgba(0,0,0,0.1); padding-left: 20px;">
-                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; opacity: 0.7;">Native ${val} Total</div>
-                <div style="font-size: 1.4rem; font-weight: 900;">${numFmt.format(totalNative)} <span style="font-size: 0.8rem;">${val}</span></div>
+                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; opacity: 0.7; margin-bottom: 4px;">Native (${val})</div>
+                <div style="font-size: 1.5rem; font-weight: 900; letter-spacing: -0.5px;">${numFmt.format(totalNative)}</div>
             </div>` : ''}
         </div>
     `;
@@ -181,14 +177,14 @@ function renderDetails() {
         const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
         const factor = a.type === "Loan" ? -1 : 1;
         return `
-        <div class="detail-card" style="padding:18px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.02); align-items:center;">
+        <div class="detail-card" style="padding:20px; border:1px solid var(--border); border-radius:14px; margin-bottom:12px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.03); align-items:center;">
             <div>
-                <div style="font-weight:700; color:#fff; font-size:1rem;">${a.name}</div>
-                <div style="font-size: 0.75rem; color:var(--text-muted); text-transform:uppercase;">${a.type} • ${a.country}</div>
+                <div style="font-weight:700; color:#fff; font-size:1.1rem; margin-bottom: 4px;">${a.name}</div>
+                <div style="font-size: 0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing: 0.5px;">${a.type} • ${a.country}</div>
             </div>
             <div style="text-align:right;">
-                <div style="color:${factor === -1 ? '#ff4444' : 'var(--prime)'}; font-weight:800; font-size:1.1rem;">${numFmt.format(conv)} ${ref}</div>
-                <div style="font-size:0.85rem; color:#fff; opacity:0.6;">${numFmt.format(a.value)} ${a.currency}</div>
+                <div style="color:${factor === -1 ? '#ff4444' : 'var(--prime)'}; font-weight:800; font-size:1.15rem;">${numFmt.format(conv)} <small style="font-size: 0.7rem; font-weight: 400; opacity: 0.7;">${ref}</small></div>
+                <div style="font-size:0.85rem; color:#fff; opacity:0.6; font-weight: 500;">${numFmt.format(a.value)} ${a.currency}</div>
             </div>
         </div>`;
     }).join('');
