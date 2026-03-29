@@ -1,4 +1,4 @@
-console.log("AssetHQ Pro V2.1 - CCY Totals Restored");
+console.log("AssetHQ Pro V2.2 - Native Totals Active");
 
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
@@ -130,16 +130,35 @@ function renderDetails() {
     const val = decodeURIComponent(params.get('value') || '');
     const ref = params.get('ref') || 'CAD';
 
-    // Title update
-    if (document.getElementById('detailTitle')) document.getElementById('detailTitle').innerText = val;
-
     const matches = assets.filter(a => (view === 'country' ? a.country === val : (view === 'currency' ? a.currency === val : a.type === val)));
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
 
-    container.innerHTML = matches.map(a => {
-        // Calculate the converted value for the reference display
+    // Calculate Grand Totals for this specific category
+    let totalRef = 0;
+    let totalNative = 0;
+    matches.forEach(a => {
+        const factor = a.type === "Loan" ? -1 : 1;
+        totalRef += ((a.value / (rates[a.currency] || 1)) * (rates[ref] || 1)) * factor;
+        totalNative += a.value * factor;
+    });
+
+    let html = `
+        <div style="background: var(--prime); color: #000; padding: 20px; border-radius: 16px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; opacity: 0.8;">Total ${val} Assets</div>
+                <div style="font-size: 1.6rem; font-weight: 900;">${numFmt.format(totalRef)} ${ref}</div>
+            </div>
+            ${view === 'currency' ? `
+            <div style="text-align: right;">
+                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; opacity: 0.8;">Native Sum</div>
+                <div style="font-size: 1.3rem; font-weight: 900;">${numFmt.format(totalNative)} ${val}</div>
+            </div>` : ''}
+        </div>
+    `;
+
+    html += matches.map(a => {
         const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
-        
+        const factor = a.type === "Loan" ? -1 : 1;
         return `
         <div class="detail-card" style="padding:20px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.02); align-items:center;">
             <div>
@@ -147,11 +166,14 @@ function renderDetails() {
                 <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">${a.type} | ${a.country}</div>
             </div>
             <div style="text-align:right;">
-                <div style="color:var(--prime); font-weight:800; font-size:1.2rem;">${numFmt.format(conv)} ${ref}</div>
+                <div style="color:${factor === -1 ? '#ff4444' : 'var(--prime)'}; font-weight:800; font-size:1.2rem;">${numFmt.format(conv)} ${ref}</div>
                 <div style="font-size:0.9rem; color:#fff; opacity:0.8;">${numFmt.format(a.value)} ${a.currency}</div>
             </div>
         </div>`;
     }).join('');
+
+    container.innerHTML = html;
+    if (document.getElementById('detailTitle')) document.getElementById('detailTitle').innerText = val;
 }
 
 function fetchRates() { 
