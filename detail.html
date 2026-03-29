@@ -11,16 +11,33 @@
 <body class="detail-page">
     <div class="container">
         <div class="glass-3d">
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
-                <button onclick="window.location.href='index.html'" class="back-btn">
+            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 35px;">
+                <button onclick="window.location.href='index.html'" class="back-btn" aria-label="Go Back">
                     <i data-lucide="arrow-left"></i>
                 </button>
-                <h1 id="detailTitle" style="font-size: 2.2rem; margin: 0; color: var(--prime); letter-spacing: -1px;">Detail</h1>
+                <div>
+                    <span class="input-tag" style="margin-bottom: 2px;">Filtering by</span>
+                    <h1 id="detailTitle" style="font-size: 2.2rem; margin: 0; color: var(--prime); letter-spacing: -1px; line-height: 1.1;">
+                        Loading...
+                    </h1>
+                </div>
             </div>
             
-            <div id="detailsList" class="details-stack"></div>
+            <div id="detailsList" class="details-stack">
+                <div style="padding: 40px; text-align: center; color: var(--text-muted); font-weight: 600;">
+                    Fetching asset data...
+                </div>
+            </div>
         </div>
     </div>
+
     <script src="./script.js"></script>
+    
+    <script>
+        // Initialize Lucide icons specifically for this page
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    </script>
 </body>
 </html>
