@@ -1,6 +1,6 @@
-const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
-const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
-const RANGE = 'webApp!A2:E'; 
+const SHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; 
+const API_KEY = 'YOUR_GOOGLE_CLOUD_API_KEY_HERE'; 
+const RANGE = 'Sheet1!A2:E'; 
 
 const CURRENCIES = ["MYR", "SGD", "HKD", "USD", "CAD", "CHF", "GBP", "EUR"];
 const COUNTRIES = ["Malaysia", "Singapore", "Hong Kong", "USA", "Canada", "Switzerland", "UK", "IBKR", "yy private", "kirsty", "philip", "markus"];
@@ -12,8 +12,10 @@ let currentView = 'type';
 let assetChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.location.pathname.includes('detail.html')) {
-        if (typeof renderDetails === "function") renderDetails();
+    const isDetail = window.location.pathname.includes('detail.html');
+
+    if (isDetail) {
+        renderDetails();
     } else {
         populateDropdowns();
         loadFilters();
@@ -24,6 +26,51 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.lucide) lucide.createIcons();
 });
 
+// --- DETAIL PAGE LOGIC ---
+function renderDetails() {
+    const params = new URLSearchParams(window.location.search);
+    const view = (params.get('view') || 'type').toLowerCase();
+    const filterValue = params.get('value');
+    const ref = params.get('ref') || 'CAD';
+
+    const container = document.getElementById('detailsList');
+    const titleEl = document.getElementById('detailTitle');
+    if (!container || !titleEl) return;
+
+    titleEl.innerText = filterValue;
+
+    const matches = assets.filter(a => {
+        if (view === 'currency' || view === 'ccy') return a.currency === filterValue;
+        if (view === 'country') return a.country === filterValue;
+        return a.type === filterValue;
+    });
+
+    const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
+
+    container.innerHTML = matches.map(a => {
+        const convertedVal = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
+        const isDifferentCcy = a.currency !== ref;
+        
+        const localLine = isDifferentCcy 
+            ? `<div class="asset-value-sub">${numFmt.format(a.value)} ${a.currency} <small>(ORIGINAL)</small></div>` 
+            : '';
+
+        return `
+            <div class="asset-item">
+                <div>
+                    <div class="asset-name">${a.name}</div>
+                    <div class="asset-meta">${a.type} • ${a.country}</div>
+                </div>
+                <div>
+                    <div class="asset-value-main">${numFmt.format(convertedVal)} <small style="font-size:0.8rem; opacity:0.6">${ref}</small></div>
+                    ${localLine}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// --- HOME PAGE & SYNC LOGIC ---
 async function triggerFullSync() {
     const btn = document.getElementById('syncTrigger');
     const icon = btn?.querySelector('.sync-icon');
@@ -35,7 +82,6 @@ async function triggerFullSync() {
         const data = await res.json();
 
         if (data.values) {
-            // Store current net as 'lastWealth' before updating
             const currentNet = parseFloat(document.getElementById('totalDisplay').innerText.replace(/[^0-9.-]+/g, "")) || 0;
             localStorage.setItem('lastWealth', currentNet);
 
@@ -46,7 +92,6 @@ async function triggerFullSync() {
             
             localStorage.setItem('assets', JSON.stringify(assets));
             localStorage.setItem('lastSyncTime', new Date().toLocaleString());
-            
             updateUI();
         }
     } catch (e) { alert("Sync failed."); }
@@ -81,24 +126,25 @@ function updateUI() {
         if (isCurrencyView) localSumm[key] = (localSumm[key] || 0) + (a.value * factor);
     });
 
-    // Display Wealth
     const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: ref, maximumFractionDigits: 0 });
-    document.getElementById('totalDisplay').innerText = fmt.format(net);
+    const totalDisplay = document.getElementById('totalDisplay');
+    if (totalDisplay) totalDisplay.innerText = fmt.format(net);
 
-    // Update Timestamp
-    document.getElementById('lastUpdated').innerText = `Last Sync: ${localStorage.getItem('lastSyncTime') || 'Never'}`;
+    const lastUpdated = document.getElementById('lastUpdated');
+    if (lastUpdated) lastUpdated.innerText = `Last Sync: ${localStorage.getItem('lastSyncTime') || 'Never'}`;
 
-    // Update Change Indicator
     const lastWealth = parseFloat(localStorage.getItem('lastWealth')) || net;
     const change = net - lastWealth;
     const changeEl = document.getElementById('changeIndicator');
-    if (change === 0) {
-        changeEl.innerText = "UNCH";
-        changeEl.className = "change-tag";
-    } else {
-        const prefix = change > 0 ? "+" : "";
-        changeEl.innerText = `${prefix}${fmt.format(change)}`;
-        changeEl.className = `change-tag ${change > 0 ? 'change-up' : 'change-down'}`;
+    if (changeEl) {
+        if (change === 0) {
+            changeEl.innerText = "UNCH";
+            changeEl.className = "change-tag";
+        } else {
+            const prefix = change > 0 ? "+" : "";
+            changeEl.innerText = `${prefix}${fmt.format(change)}`;
+            changeEl.className = `change-tag ${change > 0 ? 'change-up' : 'change-down'}`;
+        }
     }
 
     renderSummaryList(summ, ref, localSumm, isCurrencyView);
@@ -111,10 +157,10 @@ function renderSummaryList(summ, ref, localSumm, isCurrencyView) {
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
     container.innerHTML = Object.entries(summ).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([k, v]) => {
         const showLocal = (isCurrencyView && k !== ref);
-        const localLine = showLocal ? `<div style="color:var(--text-muted); font-size: 0.75rem;">${numFmt.format(localSumm[k])} ${k}</div>` : '';
+        const localLine = showLocal ? `<div style="color:var(--text-muted); font-size: 0.85rem;">${numFmt.format(localSumm[k])} ${k}</div>` : '';
         return `<div class="clickable-row" onclick="window.location.href='detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'">
-            <div style="color:var(--prime); font-weight:700">${k}</div>
-            <div style="text-align:right;"><div style="color:#fff; font-weight:800;">${numFmt.format(v)} <small style="color:var(--text-muted)">${ref}</small></div>${localLine}</div>
+            <div style="color:var(--prime); font-weight:700; font-size: 1.1rem;">${k}</div>
+            <div style="text-align:right;"><div style="color:#fff; font-weight:800; font-size: 1.1rem;">${numFmt.format(v)} <small style="color:var(--text-muted); font-weight:400">${ref}</small></div>${localLine}</div>
         </div>`;
     }).join('');
 }
@@ -134,7 +180,7 @@ function renderChart(summ) {
                 borderWidth: 2, borderColor: '#0f172a'
             }]
         },
-        options: { plugins: { legend: { display: true, position: 'bottom', labels: { color: '#f8fafc', font: { size: 10 } } } }, maintainAspectRatio: false, cutout: '70%' }
+        options: { plugins: { legend: { display: true, position: 'bottom', labels: { color: '#f8fafc', font: { size: 11, weight: '600' }, padding: 15 } } }, maintainAspectRatio: false, cutout: '70%' }
     });
 }
 
@@ -149,7 +195,7 @@ function populateDropdowns() {
 function loadFilters() {
     const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
     const elMap = { exType: 'exT', exCountry: 'exC', typeFilter: 'tF', countryFilter: 'coF', refCurrency: 'ref' };
-    Object.keys(elMap).forEach(id => { if(document.getElementById(id)) document.getElementById(id)[document.getElementById(id).type === 'checkbox' ? 'checked' : 'value'] = s[elMap[id]]; });
+    Object.keys(elMap).forEach(id => { const el = document.getElementById(id); if(el) el[el.type === 'checkbox' ? 'checked' : 'value'] = s[elMap[id]]; });
 }
 function saveFilters() {
     const s = { exT: document.getElementById('exType')?.checked, exC: document.getElementById('exCountry')?.checked, tF: document.getElementById('typeFilter')?.value, coF: document.getElementById('countryFilter')?.value, ref: document.getElementById('refCurrency')?.value };
