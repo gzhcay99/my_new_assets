@@ -90,24 +90,46 @@ function updateUI() {
 async function triggerFullSync() {
     const icon = document.querySelector('.sync-icon');
     if (icon) icon.classList.add('spinning');
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+    
+    // Ensure we are using the hardcoded credentials if storage is wiped
+    const currentSheetId = SHEET_ID; 
+    const currentApiKey = API_KEY;
+
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/${RANGE}?key=${currentApiKey}`;
+    
     try {
+        console.log("Attempting sync with URL:", url);
         const res = await fetch(url);
+        
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error?.message || "Network response was not ok");
+        }
+
         const data = await res.json();
         if (data.values) {
             assets = data.values.map(row => ({ 
                 name: row[0], country: row[1], type: row[2], currency: row[3], 
                 value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0 
             }));
+            
+            // Re-save to local storage
             localStorage.setItem('assets', JSON.stringify(assets));
             localStorage.setItem('lastSyncTime', new Date().toLocaleString());
+            
+            // Force the UI to refresh now that we have data
             updateUI();
-            alert("Sync Successful!");
+            alert("Sync Successful! Data recovered.");
+        } else {
+            throw new Error("No data found in the specified range.");
         }
-    } catch (e) { alert("Sync Error: " + e.message); }
-    finally { if (icon) icon.classList.remove('spinning'); }
+    } catch (e) { 
+        console.error("Sync Error Details:", e);
+        alert("Sync Failed: " + e.message + "\n\nCheck your internet connection and API Key restrictions."); 
+    } finally { 
+        if (icon) icon.classList.remove('spinning'); 
+    }
 }
-
 function renderSummaryList(summ, ref) {
     const container = document.getElementById('summaryDisplay');
     if (!container) return;
