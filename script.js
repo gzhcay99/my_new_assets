@@ -12,11 +12,13 @@ let currentView = 'type';
 let assetChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    const isDetailPage = !!document.getElementById('detailsList');
+    const detailContainer = document.getElementById('detailsList');
 
-    if (isDetailPage) {
+    if (detailContainer) {
+        // We are on the detail page
         renderDetails();
     } else {
+        // We are on the main dashboard
         populateDropdowns();
         loadFilters();
         updateUI();
@@ -26,6 +28,54 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.lucide) lucide.createIcons();
 });
 
+// --- CORE DETAIL RENDERING ---
+function renderDetails() {
+    const container = document.getElementById('detailsList');
+    if (!container) return;
+
+    // Re-verify assets from storage in case the variable cleared
+    if (!assets || assets.length === 0) {
+        assets = JSON.parse(localStorage.getItem('assets')) || [];
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    const val = decodeURIComponent(params.get('value') || '');
+    const ref = params.get('ref') || 'CAD';
+
+    const titleEl = document.getElementById('detailTitle');
+    if (titleEl) titleEl.innerText = val || "Details";
+
+    if (assets.length === 0) {
+        container.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-muted);">No data found. Please go back and Sync.</div>`;
+        return;
+    }
+
+    const matches = assets.filter(a => {
+        if (view === 'country') return a.country === val;
+        if (view === 'currency' || view === 'ccy') return a.currency === val;
+        return a.type === val;
+    });
+
+    const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
+
+    container.innerHTML = matches.map(a => {
+        const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
+        return `
+            <div style="padding:24px; border:1px solid var(--border); border-radius:16px; margin-bottom:12px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.03); align-items:center;">
+                <div>
+                    <div style="font-size:1.3rem; font-weight:700; color:#fff">${a.name}</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">${a.type} | ${a.country}</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:1.5rem; font-weight:800; color:var(--prime)">${numFmt.format(conv)} <small style="font-size:0.8rem; opacity:0.7">${ref}</small></div>
+                    <div style="font-size:1rem; color:var(--text-muted); font-weight:500;">${numFmt.format(a.value)} ${a.currency}</div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// --- DASHBOARD LOGIC ---
 async function triggerFullSync() {
     const icon = document.querySelector('.sync-icon');
     icon?.classList.add('spinning');
@@ -42,7 +92,7 @@ async function triggerFullSync() {
             localStorage.setItem('lastSyncTime', new Date().toLocaleString());
             updateUI();
         }
-    } catch (e) { alert("Sync Error. Check your connection."); }
+    } catch (e) { alert("Sync Error. Check API Restrictions."); }
     finally { icon?.classList.remove('spinning'); }
 }
 
@@ -57,10 +107,8 @@ function updateUI() {
     const filtered = assets.filter(a => {
         let matchT = (tF === 'All' || a.type === tF);
         if (exT && tF !== 'All') matchT = (a.type !== tF);
-        
         let matchC = (coF === 'All' || a.country === coF);
         if (exC && coF !== 'All') matchC = (a.country !== coF);
-        
         return matchT && matchC;
     });
 
@@ -97,9 +145,9 @@ function renderSummaryList(summ, ref) {
     if (!container) return;
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
     container.innerHTML = Object.entries(summ).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `
-        <div class="clickable-row" onclick="window.location.href='detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'">
+        <div class="clickable-row" onclick="window.location.href='./detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'">
             <div style="font-weight:700; font-size: 1.1rem; color:var(--prime)">${k}</div>
-            <div style="font-weight:800; font-size: 1.1rem;">${numFmt.format(v)} <small style="color:var(--text-muted)">${ref}</small></div>
+            <div style="font-weight:800; font-size: 1.1rem;">${numFmt.format(v)} <small>${ref}</small></div>
         </div>
     `).join('');
 }
@@ -124,13 +172,7 @@ function populateDropdowns() {
 }
 
 function saveFilters() {
-    const s = { 
-        exT: document.getElementById('exType')?.checked, 
-        exC: document.getElementById('exCountry')?.checked, 
-        tF: document.getElementById('typeFilter')?.value, 
-        coF: document.getElementById('countryFilter')?.value, 
-        ref: document.getElementById('refCurrency')?.value 
-    };
+    const s = { exT: document.getElementById('exType')?.checked, exC: document.getElementById('exCountry')?.checked, tF: document.getElementById('typeFilter')?.value, coF: document.getElementById('countryFilter')?.value, ref: document.getElementById('refCurrency')?.value };
     localStorage.setItem('filters', JSON.stringify(s));
 }
 
@@ -144,21 +186,3 @@ function loadFilters() {
 }
 
 function fetchRates() { fetch('https://open.er-api.com/v6/latest/USD').then(res => res.json()).then(data => { if(data.rates) { rates = data.rates; localStorage.setItem('fx_rates', JSON.stringify(rates)); updateUI(); } }); }
-
-function renderDetails() {
-    const params = new URLSearchParams(window.location.search);
-    const view = params.get('view');
-    const val = params.get('value');
-    const ref = params.get('ref') || 'USD';
-    const titleEl = document.getElementById('detailTitle');
-    if (titleEl) titleEl.innerText = val;
-    const matches = assets.filter(a => (view === 'country' ? a.country === val : (view === 'currency' ? a.currency === val : a.type === val)));
-    const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
-    document.getElementById('detailsList').innerHTML = matches.map(a => {
-        const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
-        return `<div style="padding:24px; border:1px solid var(--border); border-radius:16px; margin-bottom:12px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.03); align-items:center;">
-            <div><div style="font-size:1.3rem; font-weight:700">${a.name}</div><div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${a.type} | ${a.country}</div></div>
-            <div style="text-align:right"><div style="font-size:1.5rem; font-weight:800; color:var(--prime)">${numFmt.format(conv)} ${ref}</div><div style="font-size:1rem; color:var(--text-muted)">${numFmt.format(a.value)} ${a.currency}</div></div>
-        </div>`;
-    }).join('');
-}

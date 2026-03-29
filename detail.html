@@ -12,32 +12,23 @@
     <div class="container">
         <div class="glass-3d">
             <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 35px;">
-                <button onclick="window.location.href='index.html'" class="back-btn" aria-label="Go Back">
+                <button onclick="window.location.href='index.html'" class="back-btn" style="background: #000; border: 1px solid var(--border); color: #fff; padding: 12px; border-radius: 12px; cursor: pointer; display: flex; align-items: center;">
                     <i data-lucide="arrow-left"></i>
                 </button>
                 <div>
-                    <span class="input-tag" style="margin-bottom: 2px;">Filtering by</span>
-                    <h1 id="detailTitle" style="font-size: 2.2rem; margin: 0; color: var(--prime); letter-spacing: -1px; line-height: 1.1;">
-                        Loading...
-                    </h1>
+                    <span class="input-tag" style="margin-bottom: 2px;">Asset Breakdown</span>
+                    <h1 id="detailTitle" style="font-size: 2.2rem; margin: 0; color: var(--prime); letter-spacing: -1px; line-height: 1.1;">Detail</h1>
                 </div>
             </div>
             
             <div id="detailsList" class="details-stack">
-                <div style="padding: 40px; text-align: center; color: var(--text-muted); font-weight: 600;">
-                    Fetching asset data...
-                </div>
+                <div style="padding:40px; text-align:center; color:var(--text-muted);">Initializing...</div>
             </div>
         </div>
     </div>
-
     <script src="./script.js"></script>
-    
     <script>
-        // Initialize Lucide icons specifically for this page
-        if (window.lucide) {
-            lucide.createIcons();
-        }
+        if (window.lucide) lucide.createIcons();
     </script>
 </body>
 </html>
