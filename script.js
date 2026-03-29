@@ -1,4 +1,4 @@
-console.log("AssetHQ Pro V2.2 - Native Totals Active");
+console.log("AssetHQ Pro V2.4 - Dashboard Native Totals Active");
 
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
@@ -71,20 +71,54 @@ function updateUI() {
         return matchT && matchC;
     });
 
-    let net = 0; const summ = {};
+    let net = 0; 
+    const summ = {}; // Stores converted values for sorting/charting
+    const nativeSumm = {}; // Specifically for the Currency Tab native totals
+
     filtered.forEach(a => {
-        const val = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
         const factor = a.type === "Loan" ? -1 : 1;
-        net += (val * factor);
+        const valConverted = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
+        
+        net += (valConverted * factor);
+        
         const key = currentView === 'country' ? a.country : (currentView === 'currency' ? a.currency : a.type);
-        summ[key] = (summ[key] || 0) + (val * factor);
+        summ[key] = (summ[key] || 0) + (valConverted * factor);
+        
+        // Track native totals separately if we are in currency view
+        if (currentView === 'currency') {
+            nativeSumm[key] = (nativeSumm[key] || 0) + (a.value * factor);
+        }
     });
 
     const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: ref, maximumFractionDigits: 0 });
     totalDisplay.innerText = fmt.format(net);
     
-    renderSummaryList(summ, ref);
+    renderSummaryList(summ, ref, nativeSumm);
     if (document.getElementById('assetChart')) renderChart(summ);
+}
+
+function renderSummaryList(summ, ref, nativeSumm) {
+    const container = document.getElementById('summaryDisplay');
+    if (!container) return;
+    const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
+    
+    container.innerHTML = Object.entries(summ).sort((a,b)=>b[1]-a[1]).map(([k, v]) => {
+        // If in currency view, show "Native Amount" + "Converted Amount"
+        const subLabel = (currentView === 'currency' && nativeSumm[k] !== undefined) 
+            ? `<div style="font-size: 0.8rem; color: var(--prime); font-weight: 600;">${numFmt.format(nativeSumm[k])} ${k}</div>`
+            : `<div style="font-size: 0.8rem; color: var(--text-muted);">${numFmt.format(v)} ${ref}</div>`;
+
+        return `
+        <div class="clickable-row" onclick="window.location.href='./detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border);">
+            <div>
+                <div style="font-weight:700; color:#fff; font-size: 1.1rem;">${k}</div>
+                ${subLabel}
+            </div>
+            <div style="text-align: right;">
+                <div style="font-weight:800; font-size: 1.1rem;">${numFmt.format(v)} <small>${ref}</small></div>
+            </div>
+        </div>
+    `}).join('');
 }
 
 async function triggerFullSync() {
@@ -108,18 +142,6 @@ async function triggerFullSync() {
     finally { if (icon) icon.classList.remove('spinning'); }
 }
 
-function renderSummaryList(summ, ref) {
-    const container = document.getElementById('summaryDisplay');
-    if (!container) return;
-    const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
-    container.innerHTML = Object.entries(summ).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `
-        <div class="clickable-row" onclick="window.location.href='./detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'">
-            <div style="font-weight:700; color:var(--prime)">${k}</div>
-            <div style="font-weight:800;">${numFmt.format(v)} <small>${ref}</small></div>
-        </div>
-    `).join('');
-}
-
 function renderDetails() {
     const container = document.getElementById('detailsList');
     if (!container) return;
@@ -133,7 +155,6 @@ function renderDetails() {
     const matches = assets.filter(a => (view === 'country' ? a.country === val : (view === 'currency' ? a.currency === val : a.type === val)));
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
 
-    // Calculate Grand Totals for this specific category
     let totalRef = 0;
     let totalNative = 0;
     matches.forEach(a => {
@@ -143,15 +164,15 @@ function renderDetails() {
     });
 
     let html = `
-        <div style="background: var(--prime); color: #000; padding: 20px; border-radius: 16px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: var(--prime); color: #000; padding: 20px; border-radius: 16px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.2);">
             <div>
-                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; opacity: 0.8;">Total ${val} Assets</div>
-                <div style="font-size: 1.6rem; font-weight: 900;">${numFmt.format(totalRef)} ${ref}</div>
+                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; opacity: 0.7;">Total in ${ref}</div>
+                <div style="font-size: 1.6rem; font-weight: 900;">${numFmt.format(totalRef)} <span style="font-size: 0.9rem;">${ref}</span></div>
             </div>
             ${view === 'currency' ? `
-            <div style="text-align: right;">
-                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; opacity: 0.8;">Native Sum</div>
-                <div style="font-size: 1.3rem; font-weight: 900;">${numFmt.format(totalNative)} ${val}</div>
+            <div style="text-align: right; border-left: 1px solid rgba(0,0,0,0.1); padding-left: 20px;">
+                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; opacity: 0.7;">Native ${val} Total</div>
+                <div style="font-size: 1.4rem; font-weight: 900;">${numFmt.format(totalNative)} <span style="font-size: 0.8rem;">${val}</span></div>
             </div>` : ''}
         </div>
     `;
@@ -160,14 +181,14 @@ function renderDetails() {
         const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
         const factor = a.type === "Loan" ? -1 : 1;
         return `
-        <div class="detail-card" style="padding:20px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.02); align-items:center;">
+        <div class="detail-card" style="padding:18px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.02); align-items:center;">
             <div>
-                <div style="font-weight:700; color:#fff; font-size:1.1rem;">${a.name}</div>
-                <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">${a.type} | ${a.country}</div>
+                <div style="font-weight:700; color:#fff; font-size:1rem;">${a.name}</div>
+                <div style="font-size: 0.75rem; color:var(--text-muted); text-transform:uppercase;">${a.type} • ${a.country}</div>
             </div>
             <div style="text-align:right;">
-                <div style="color:${factor === -1 ? '#ff4444' : 'var(--prime)'}; font-weight:800; font-size:1.2rem;">${numFmt.format(conv)} ${ref}</div>
-                <div style="font-size:0.9rem; color:#fff; opacity:0.8;">${numFmt.format(a.value)} ${a.currency}</div>
+                <div style="color:${factor === -1 ? '#ff4444' : 'var(--prime)'}; font-weight:800; font-size:1.1rem;">${numFmt.format(conv)} ${ref}</div>
+                <div style="font-size:0.85rem; color:#fff; opacity:0.6;">${numFmt.format(a.value)} ${a.currency}</div>
             </div>
         </div>`;
     }).join('');
