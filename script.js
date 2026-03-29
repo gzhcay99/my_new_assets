@@ -12,34 +12,105 @@ let currentView = 'type';
 let assetChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    const detailContainer = document.getElementById('detailsList');
-    if (detailContainer) {
+    // Determine which page we are on by checking for unique IDs
+    const isDetailPage = !!document.getElementById('detailsList');
+
+    if (isDetailPage) {
         renderDetails();
     } else {
+        // Dashboard logic: only run if these elements exist
         populateDropdowns();
         loadFilters();
         updateUI();
         fetchRates();
+        
         const syncBtn = document.getElementById('syncTrigger');
         if (syncBtn) syncBtn.onclick = triggerFullSync;
     }
+    
     if (window.lucide) lucide.createIcons();
 });
 
+// --- CORE UI UPDATE (SAFE VERSION) ---
+function updateUI() {
+    const typeEl = document.getElementById('typeFilter');
+    const countryEl = document.getElementById('countryFilter');
+    const refEl = document.getElementById('refCurrency');
+    
+    // 1. Only save filters if we are on the Dashboard
+    if (typeEl && countryEl) {
+        saveFilters();
+    }
+
+    // 2. Safe access with fallbacks to prevent "null" errors
+    const ref = refEl?.value || 'CAD';
+    const tF = typeEl?.value || 'All';
+    const coF = countryEl?.value || 'All';
+    const exT = document.getElementById('exType')?.checked || false;
+    const exC = document.getElementById('exCountry')?.checked || false;
+
+    // 3. Filtering Logic
+    const filtered = assets.filter(a => {
+        let matchT = (tF === 'All' || a.type === tF);
+        if (exT && tF !== 'All') matchT = (a.type !== tF);
+        
+        let matchC = (coF === 'All' || a.country === coF);
+        if (exC && coF !== 'All') matchC = (a.country !== coF);
+        
+        return matchT && matchC;
+    });
+
+    let net = 0; 
+    const summ = {};
+
+    filtered.forEach(a => {
+        const val = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
+        const factor = a.type === "Loan" ? -1 : 1;
+        net += (val * factor);
+        
+        const key = currentView === 'country' ? a.country : (currentView === 'currency' ? a.currency : a.type);
+        summ[key] = (summ[key] || 0) + (val * factor);
+    });
+
+    // 4. Update Dashboard Displays (if they exist)
+    const totalDisplay = document.getElementById('totalDisplay');
+    if (totalDisplay) {
+        const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: ref, maximumFractionDigits: 0 });
+        totalDisplay.innerText = fmt.format(net);
+        
+        const changeEl = document.getElementById('changeIndicator');
+        const lastWealth = parseFloat(localStorage.getItem('lastWealth')) || net;
+        if (changeEl) {
+            const diff = net - lastWealth;
+            changeEl.innerText = (diff >= 0 ? "+" : "") + fmt.format(diff);
+            changeEl.className = `change-tag ${diff >= 0 ? 'change-up' : 'change-down'}`;
+        }
+    }
+
+    const lastSyncEl = document.getElementById('lastUpdated');
+    if (lastSyncEl) {
+        lastSyncEl.innerText = `Last Sync: ${localStorage.getItem('lastSyncTime') || 'Never'}`;
+    }
+
+    renderSummaryList(summ, ref);
+    
+    if (document.getElementById('assetChart')) {
+        renderChart(summ);
+    }
+}
+
+// --- SYNC & DATA FETCHING ---
 async function triggerFullSync() {
     const icon = document.querySelector('.sync-icon');
     if (icon) icon.classList.add('spinning');
     
-    // Constructing URL without extra headers to avoid CORS Preflight blocks
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
     
     try {
-        const response = await fetch(url);
-        const data = await response.json();
+        const res = await fetch(url);
+        const data = await res.json();
         
-        if (data.error) {
-            throw new Error(data.error.message);
-        }
+        if (data.error) throw new Error(data.error.message);
 
         if (data.values) {
             const currentDisplay = document.getElementById('totalDisplay');
@@ -54,64 +125,32 @@ async function triggerFullSync() {
             localStorage.setItem('assets', JSON.stringify(assets));
             localStorage.setItem('lastSyncTime', new Date().toLocaleString());
             updateUI();
-            alert("Sync Successful!");
         }
     } catch (e) { 
-        console.error("Sync Error:", e);
-        alert("Sync Failed: " + e.message + "\n\nTip: Ensure your Google Cloud Console allows requests from this URL."); 
+        alert("Sync Failed: " + e.message); 
     } finally { 
         if (icon) icon.classList.remove('spinning'); 
     }
 }
 
-function updateUI() {
-    saveFilters();
-    const ref = document.getElementById('refCurrency')?.value || 'CAD';
-    const tF = document.getElementById('typeFilter')?.value || 'All';
-    const coF = document.getElementById('countryFilter')?.value || 'All';
-    const exT = document.getElementById('exType')?.checked || false;
-    const exC = document.getElementById('exCountry')?.checked || false;
-
-    const filtered = assets.filter(a => {
-        let matchT = (tF === 'All' || a.type === tF);
-        if (exT && tF !== 'All') matchT = (a.type !== tF);
-        let matchC = (coF === 'All' || a.country === coF);
-        if (exC && coF !== 'All') matchC = (a.country !== coF);
-        return matchT && matchC;
-    });
-
-    let net = 0; const summ = {};
-    filtered.forEach(a => {
-        const val = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
-        const factor = a.type === "Loan" ? -1 : 1;
-        net += (val * factor);
-        const key = currentView === 'country' ? a.country : (currentView === 'currency' ? a.currency : a.type);
-        summ[key] = (summ[key] || 0) + (val * factor);
-    });
-
-    const fmt = new Intl.NumberFormat('en-CA', { style: 'currency', currency: ref, maximumFractionDigits: 0 });
-    const totalDisplay = document.getElementById('totalDisplay');
-    if (totalDisplay) totalDisplay.innerText = fmt.format(net);
-    
-    const changeEl = document.getElementById('changeIndicator');
-    const lastWealth = parseFloat(localStorage.getItem('lastWealth')) || net;
-    if (changeEl) {
-        const diff = net - lastWealth;
-        changeEl.innerText = (diff >= 0 ? "+" : "") + fmt.format(diff);
-        changeEl.className = `change-tag ${diff >= 0 ? 'change-up' : 'change-down'}`;
-    }
-
-    const lastSyncEl = document.getElementById('lastUpdated');
-    if (lastSyncEl) lastSyncEl.innerText = `Last Sync: ${localStorage.getItem('lastSyncTime') || 'Never'}`;
-
-    renderSummaryList(summ, ref);
-    renderChart(summ);
+function fetchRates() { 
+    fetch('https://open.er-api.com/v6/latest/USD')
+        .then(res => res.json())
+        .then(data => { 
+            if(data.rates) { 
+                rates = data.rates; 
+                localStorage.setItem('fx_rates', JSON.stringify(rates)); 
+                updateUI(); 
+            } 
+        }); 
 }
 
+// --- RENDERING HELPERS ---
 function renderSummaryList(summ, ref) {
     const container = document.getElementById('summaryDisplay');
     if (!container) return;
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
+    
     container.innerHTML = Object.entries(summ).sort((a,b)=>b[1]-a[1]).map(([k, v]) => `
         <div class="clickable-row" onclick="window.location.href='./detail.html?view=${currentView}&value=${encodeURIComponent(k)}&ref=${ref}'">
             <div style="font-weight:700; font-size: 1.1rem; color:var(--prime)">${k}</div>
@@ -132,37 +171,11 @@ function renderChart(summ) {
     });
 }
 
-function setView(v, btn) { currentView = v; document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); updateUI(); }
-
-function populateDropdowns() {
-    const fill = (id, list, all=true) => { const el = document.getElementById(id); if(el) el.innerHTML = (all ? '<option value="All">All</option>' : '') + list.map(x => `<option value="${x}">${x}</option>`).join(''); };
-    fill('refCurrency', CURRENCIES, false); fill('typeFilter', TYPES); fill('countryFilter', COUNTRIES);
-}
-
-function saveFilters() {
-    const s = { exT: document.getElementById('exType')?.checked, exC: document.getElementById('exCountry')?.checked, tF: document.getElementById('typeFilter')?.value, coF: document.getElementById('countryFilter')?.value, ref: document.getElementById('refCurrency')?.value };
-    localStorage.setItem('filters', JSON.stringify(s));
-}
-
-function loadFilters() {
-    const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
-    if(document.getElementById('exType')) document.getElementById('exType').checked = s.exT;
-    if(document.getElementById('exCountry')) document.getElementById('exCountry').checked = s.exC;
-    if(document.getElementById('typeFilter')) document.getElementById('typeFilter').value = s.tF;
-    if(document.getElementById('countryFilter')) document.getElementById('countryFilter').value = s.coF;
-    if(document.getElementById('refCurrency')) document.getElementById('refCurrency').value = s.ref;
-}
-
-function fetchRates() { 
-    fetch('https://open.er-api.com/v6/latest/USD')
-    .then(res => res.json())
-    .then(data => { if(data.rates) { rates = data.rates; localStorage.setItem('fx_rates', JSON.stringify(rates)); updateUI(); } })
-    .catch(err => console.error("FX Rate Fetch Failed:", err));
-}
-
 function renderDetails() {
     const container = document.getElementById('detailsList');
     if (!container) return;
+    
+    // Ensure we have assets in memory
     if (!assets || assets.length === 0) assets = JSON.parse(localStorage.getItem('assets')) || [];
     
     const params = new URLSearchParams(window.location.search);
@@ -178,9 +191,55 @@ function renderDetails() {
 
     container.innerHTML = matches.map(a => {
         const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
-        return `<div style="padding:24px; border:1px solid var(--border); border-radius:16px; margin-bottom:12px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.03); align-items:center;">
-            <div><div style="font-size:1.3rem; font-weight:700">${a.name}</div><div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${a.type} | ${a.country}</div></div>
-            <div style="text-align:right"><div style="font-size:1.5rem; font-weight:800; color:var(--prime)">${numFmt.format(conv)} ${ref}</div><div style="font-size:1rem; color:var(--text-muted)">${numFmt.format(a.value)} ${a.currency}</div></div>
-        </div>`;
+        return `
+            <div style="padding:24px; border:1px solid var(--border); border-radius:16px; margin-bottom:12px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.03); align-items:center;">
+                <div>
+                    <div style="font-size:1.3rem; font-weight:700; color:#fff">${a.name}</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${a.type} | ${a.country}</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:1.5rem; font-weight:800; color:var(--prime)">${numFmt.format(conv)} ${ref}</div>
+                    <div style="font-size:1rem; color:var(--text-muted)">${numFmt.format(a.value)} ${a.currency}</div>
+                </div>
+            </div>`;
     }).join('');
+}
+
+// --- STATE MANAGEMENT ---
+function setView(v, btn) { 
+    currentView = v; 
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); 
+    btn.classList.add('active'); 
+    updateUI(); 
+}
+
+function populateDropdowns() {
+    const fill = (id, list, all=true) => { 
+        const el = document.getElementById(id); 
+        if(el) el.innerHTML = (all ? '<option value="All">All</option>' : '') + list.map(x => `<option value="${x}">${x}</option>`).join(''); 
+    };
+    fill('refCurrency', CURRENCIES, false); 
+    fill('typeFilter', TYPES); 
+    fill('countryFilter', COUNTRIES);
+}
+
+function saveFilters() {
+    const s = { 
+        exT: document.getElementById('exType')?.checked, 
+        exC: document.getElementById('exCountry')?.checked, 
+        tF: document.getElementById('typeFilter')?.value, 
+        coF: document.getElementById('countryFilter')?.value, 
+        ref: document.getElementById('refCurrency')?.value 
+    };
+    localStorage.setItem('filters', JSON.stringify(s));
+}
+
+function loadFilters() {
+    const s = JSON.parse(localStorage.getItem('filters')) || { exT: false, exC: false, tF: 'All', coF: 'All', ref: 'CAD' };
+    const e = id => document.getElementById(id);
+    if(e('exType')) e('exType').checked = s.exT;
+    if(e('exCountry')) e('exCountry').checked = s.exC;
+    if(e('typeFilter')) e('typeFilter').value = s.tF;
+    if(e('countryFilter')) e('countryFilter').value = s.coF;
+    if(e('refCurrency')) e('refCurrency').value = s.ref;
 }
