@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Asset Detail - AssetHQ Pro</title>
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Asset Details - AssetHQ Pro</title>
     <link rel="stylesheet" href="./style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -11,24 +12,30 @@
 <body class="detail-page">
     <div class="container">
         <div class="glass-3d">
-            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 35px;">
-                <button onclick="window.location.href='index.html'" class="back-btn" style="background: #000; border: 1px solid var(--border); color: #fff; padding: 12px; border-radius: 12px; cursor: pointer; display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                <button onclick="window.location.href='index.html'" class="back-btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 12px; cursor: pointer;">
                     <i data-lucide="arrow-left"></i>
                 </button>
                 <div>
-                    <span class="input-tag" style="margin-bottom: 2px;">Asset Breakdown</span>
-                    <h1 id="detailTitle" style="font-size: 2.2rem; margin: 0; color: var(--prime); letter-spacing: -1px; line-height: 1.1;">Detail</h1>
+                    <span class="input-tag">Category Breakdown</span>
+                    <h1 id="detailTitle" style="margin:0; font-size: 1.8rem; color: var(--prime);">Loading...</h1>
                 </div>
             </div>
             
             <div id="detailsList" class="details-stack">
-                <div style="padding:40px; text-align:center; color:var(--text-muted);">Initializing...</div>
+                </div>
+
+            <div style="margin-top: 30px; text-align: center; font-size: 0.65rem; color: var(--text-muted); opacity: 0.5;">
+                AssetHQ Pro v2.1 (CCY Restore)
             </div>
         </div>
     </div>
+
     <script src="./script.js"></script>
     <script>
-        if (window.lucide) lucide.createIcons();
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) lucide.createIcons();
+        });
     </script>
 </body>
 </html>

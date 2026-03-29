@@ -1,3 +1,5 @@
+console.log("AssetHQ Pro V2.1 - CCY Totals Restored");
+
 const SHEET_ID = '1IzUo-d4_9C9pnJR-12R7Uy1AfHfxRkb8WauXOqCENyg'; 
 const API_KEY = 'AIzaSyAxbVThyW2UZHsWZr4-UxkjanGxmgDtuRY'; 
 const RANGE = 'webApp!A2:E'; 
@@ -32,11 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUI();
         fetchRates();
         
-        // Sync Button
         const syncBtn = document.getElementById('syncTrigger');
         if (syncBtn) syncBtn.onclick = triggerFullSync;
 
-        // Clear Cache Button
         const clearBtn = document.getElementById('clearCacheBtn');
         if (clearBtn) {
             clearBtn.onclick = () => {
@@ -90,46 +90,24 @@ function updateUI() {
 async function triggerFullSync() {
     const icon = document.querySelector('.sync-icon');
     if (icon) icon.classList.add('spinning');
-    
-    // Ensure we are using the hardcoded credentials if storage is wiped
-    const currentSheetId = SHEET_ID; 
-    const currentApiKey = API_KEY;
-
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${currentSheetId}/values/${RANGE}?key=${currentApiKey}`;
-    
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}&t=${Date.now()}`;
     try {
-        console.log("Attempting sync with URL:", url);
         const res = await fetch(url);
-        
-        if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.error?.message || "Network response was not ok");
-        }
-
         const data = await res.json();
         if (data.values) {
             assets = data.values.map(row => ({ 
                 name: row[0], country: row[1], type: row[2], currency: row[3], 
                 value: parseFloat(row[4]?.toString().replace(/[^0-9.-]+/g, "")) || 0 
             }));
-            
-            // Re-save to local storage
             localStorage.setItem('assets', JSON.stringify(assets));
             localStorage.setItem('lastSyncTime', new Date().toLocaleString());
-            
-            // Force the UI to refresh now that we have data
             updateUI();
-            alert("Sync Successful! Data recovered.");
-        } else {
-            throw new Error("No data found in the specified range.");
+            alert("Sync Successful!");
         }
-    } catch (e) { 
-        console.error("Sync Error Details:", e);
-        alert("Sync Failed: " + e.message + "\n\nCheck your internet connection and API Key restrictions."); 
-    } finally { 
-        if (icon) icon.classList.remove('spinning'); 
-    }
+    } catch (e) { alert("Sync Error: " + e.message); }
+    finally { if (icon) icon.classList.remove('spinning'); }
 }
+
 function renderSummaryList(summ, ref) {
     const container = document.getElementById('summaryDisplay');
     if (!container) return;
@@ -146,20 +124,34 @@ function renderDetails() {
     const container = document.getElementById('detailsList');
     if (!container) return;
     if (assets.length === 0) loadDataFromStorage();
+
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
     const val = decodeURIComponent(params.get('value') || '');
     const ref = params.get('ref') || 'CAD';
+
+    // Title update
+    if (document.getElementById('detailTitle')) document.getElementById('detailTitle').innerText = val;
+
     const matches = assets.filter(a => (view === 'country' ? a.country === val : (view === 'currency' ? a.currency === val : a.type === val)));
     const numFmt = new Intl.NumberFormat('en-CA', { maximumFractionDigits: 0 });
+
     container.innerHTML = matches.map(a => {
+        // Calculate the converted value for the reference display
         const conv = (a.value / (rates[a.currency] || 1)) * (rates[ref] || 1);
-        return `<div class="detail-card" style="padding:20px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.02);">
-            <div><div style="font-weight:700;">${a.name}</div><div style="font-size:0.8rem; color:var(--text-muted);">${a.type}</div></div>
-            <div style="text-align:right;"><div style="color:var(--prime); font-weight:800;">${numFmt.format(conv)} ${ref}</div><div style="font-size:0.8rem;">${numFmt.format(a.value)} ${a.currency}</div></div>
+        
+        return `
+        <div class="detail-card" style="padding:20px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; background:rgba(255,255,255,0.02); align-items:center;">
+            <div>
+                <div style="font-weight:700; color:#fff; font-size:1.1rem;">${a.name}</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">${a.type} | ${a.country}</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="color:var(--prime); font-weight:800; font-size:1.2rem;">${numFmt.format(conv)} ${ref}</div>
+                <div style="font-size:0.9rem; color:#fff; opacity:0.8;">${numFmt.format(a.value)} ${a.currency}</div>
+            </div>
         </div>`;
     }).join('');
-    if (document.getElementById('detailTitle')) document.getElementById('detailTitle').innerText = val;
 }
 
 function fetchRates() { 
@@ -167,15 +159,19 @@ function fetchRates() {
         if(data.rates) { rates = data.rates; localStorage.setItem('fx_rates', JSON.stringify(rates)); updateUI(); } 
     }); 
 }
+
 function setView(v, btn) { currentView = v; document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); updateUI(); }
+
 function populateDropdowns() {
     const fill = (id, list, all=true) => { const el = document.getElementById(id); if(el) el.innerHTML = (all ? '<option value="All">All</option>' : '') + list.map(x => `<option value="${x}">${x}</option>`).join(''); };
     fill('refCurrency', CURRENCIES, false); fill('typeFilter', TYPES); fill('countryFilter', COUNTRIES);
 }
+
 function saveFilters() {
     const e = id => document.getElementById(id);
     localStorage.setItem('filters', JSON.stringify({ exT: e('exType')?.checked, exC: e('exCountry')?.checked, tF: e('typeFilter')?.value, coF: e('countryFilter')?.value, ref: e('refCurrency')?.value }));
 }
+
 function loadFilters() {
     const s = JSON.parse(localStorage.getItem('filters')) || { tF: 'All', coF: 'All', ref: 'CAD' };
     const e = id => document.getElementById(id);
@@ -183,6 +179,7 @@ function loadFilters() {
     if(e('typeFilter')) e('typeFilter').value = s.tF; if(e('countryFilter')) e('countryFilter').value = s.coF;
     if(e('refCurrency')) e('refCurrency').value = s.ref;
 }
+
 function renderChart(summ) {
     const canvas = document.getElementById('assetChart');
     if (!canvas) return;

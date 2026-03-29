@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0a0a">
     <title>AssetHQ Pro - Dashboard</title>
-    
     <link rel="stylesheet" href="./style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -32,14 +31,9 @@
                     <i data-lucide="refresh-cw" class="sync-icon"></i>
                     <span>Sync Data</span>
                 </button>
-                
-                <button id="clearCacheBtn" class="secondary-btn" title="Clear Cache" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.2); color: #ff4444; width: 50px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <button id="clearCacheBtn" title="Clear Cache" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.2); color: #ff4444; width: 50px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
                     <i data-lucide="trash-2" style="width: 20px; height: 20px;"></i>
                 </button>
-            </div>
-
-            <div id="lastUpdated" style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-bottom: 20px;">
-                Last Sync: Never
             </div>
 
             <div class="filters-grid">
@@ -69,11 +63,13 @@
                 <button class="tab" onclick="setView('currency', this)">Currency</button>
             </div>
 
-            <div id="summaryDisplay" class="summary-list">
-                </div>
+            <div id="summaryDisplay" class="summary-list"></div>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 0.65rem; color: var(--text-muted); opacity: 0.5;">
+                AssetHQ Pro v2.1
+            </div>
         </div>
     </div>
-
     <script src="./script.js"></script>
 </body>
 </html>
