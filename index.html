@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0a0a0a">
+    <meta name="theme-color" content="#fbbf24">
     <title>AssetHQ Pro - Dashboard</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <link rel="stylesheet" href="./style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -45,14 +49,14 @@
                     <label>Asset Type</label>
                     <div style="display:flex; gap:5px;">
                         <select id="typeFilter" onchange="updateUI()"></select>
-                        <input type="checkbox" id="exType" onchange="updateUI()" class="ex-check" title="Exclude selected type">
+                        <input type="checkbox" id="exType" onchange="updateUI()" class="ex-check">
                     </div>
                 </div>
                 <div class="filter-group">
                     <label>Country</label>
                     <div style="display:flex; gap:5px;">
                         <select id="countryFilter" onchange="updateUI()"></select>
-                        <input type="checkbox" id="exCountry" onchange="updateUI()" class="ex-check" title="Exclude selected country">
+                        <input type="checkbox" id="exCountry" onchange="updateUI()" class="ex-check">
                     </div>
                 </div>
             </div>
@@ -63,18 +67,25 @@
                 <button class="tab" onclick="setView('currency', this)">Currency</button>
             </div>
 
-            <div id="summaryDisplay" class="summary-list">
-                </div>
+            <div id="summaryDisplay" class="summary-list"></div>
             
             <div style="margin-top: 20px; text-align: center; font-size: 0.65rem; color: var(--text-muted); opacity: 0.5;">
-                AssetHQ Pro v2.4.1 (Cache-Bust Update)
+                AssetHQ Pro v2.4.1 (PWA Enabled)
             </div>
         </div>
     </div>
 
     <script src="./script.js?v=2.4.1"></script>
     <script>
-        // Re-initialize icons after script load
+        // Register the Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker Registered'))
+                    .catch(err => console.log('SW Registration Failed', err));
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             if (window.lucide) lucide.createIcons();
         });
