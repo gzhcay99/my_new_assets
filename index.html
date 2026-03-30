@@ -70,25 +70,61 @@
             <div id="summaryDisplay" class="summary-list"></div>
             
             <div style="margin-top: 20px; text-align: center; font-size: 0.65rem; color: var(--text-muted); opacity: 0.5;">
-                AssetHQ Pro v2.4.1 (PWA Enabled)
+                AssetHQ Pro v2.5 (App Mode Enabled)
             </div>
         </div>
     </div>
 
-    <script src="./script.js?v=2.4.1"></script>
+    <button id="pwaInstallBtn" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); z-index:9999; background:#fbbf24; color:#000; padding:14px 28px; border-radius:30px; font-weight:800; border:none; box-shadow:0 10px 25px rgba(0,0,0,0.6); font-family:inherit; animation: bounce 2s infinite;">
+        Install AssetHQ App
+    </button>
+
+    <script src="./script.js?v=2.5"></script>
     <script>
-        // Register the Service Worker for PWA
+        // 1. Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker Registered'))
-                    .catch(err => console.log('SW Registration Failed', err));
+                    .then(reg => console.log('PWA: Service Worker Active'))
+                    .catch(err => console.error('PWA: Registration Failed', err));
             });
         }
 
+        // 2. Handle the "Install App" Prompt Logic
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwaInstallBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('PWA: Ready for installation');
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show the custom install button
+            installBtn.style.display = 'block';
+        });
+
+        installBtn.addEventListener('click', () => {
+            installBtn.style.display = 'none';
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choice) => {
+                if (choice.outcome === 'accepted') {
+                    console.log('PWA: User accepted install');
+                }
+                deferredPrompt = null;
+            });
+        });
+
+        // 3. Lucide Icons
         document.addEventListener('DOMContentLoaded', () => {
             if (window.lucide) lucide.createIcons();
         });
     </script>
+
+    <style>
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateX(-50%) translateY(0);}
+            40% {transform: translateX(-50%) translateY(-10px);}
+            60% {transform: translateX(-50%) translateY(-5px);}
+        }
+    </style>
 </body>
 </html>
