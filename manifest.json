@@ -1,15 +1,21 @@
 {
+  "name": "AssetHQ Pro",
   "short_name": "AssetHQ",
-  "name": "AssetHQ Pro Portfolio",
+  "description": "Multi-portfolio financial tracking dashboard.",
+  "start_url": "/my_new_assets/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#fbbf24",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2489/2489756.png",
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "start_url": "./index.html",
-  "display": "standalone",
-  "theme_color": "#020617",
-  "background_color": "#020617"
+  ]
 }
